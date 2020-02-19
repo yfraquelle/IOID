@@ -26,6 +26,8 @@ To visualize the result of the instance of interest detection, we provide a demo
 python demo.py −−img <image path> −−config <configuration file path>
 ```
 You can train you own model by running the following script:
+TIP:setting list sample: ['('semantic,0.01,30')','('p_interest,0.01,10')','('selection,0.01,100')']
+brackets must be surrounded by quoted, and there must not exist space.
 ```python
 python train.py −−setting <setting list> −−config <configuration file path>
 ```
@@ -41,4 +43,4 @@ In order to verify the effectiveness of the method, the component_analysis.py fi
 ```python
 python component_analysis.py −−ins_ext <panoptic segmentation path> −−sem_ext <semantic segmentation path> −−p_intr <interest estimation path> −−config <configuration file path>
 ```
-You can download the pretrained model at https://drive.google.com/open?id=1COzdQtxtA0v4bkb6MOuUX7QpbWJPsibm
+You can download some pretrained models at https://drive.google.com/open?id=167nT9zWvmWN2YQ_SKoMO7faqHE2LMcX2 and https://drive.google.com/open?id=1COzdQtxtA0v4bkb6MOuUX7QpbWJPsibm

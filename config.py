@@ -155,7 +155,7 @@ class Config(object):
 
     JSON_PATH = "data/"
 
-    WEIGHT_PATH = "logs/"
+    WEIGHT_PATH = "logs/CIN_ooi_all.pth"
 
     IMAGE_SIZE = 1024
 

@@ -238,8 +238,7 @@ def rgb2id(color):
             color = color.astype(np.uint32)
         return color[:, :, 0] + 256 * color[:, :, 1] + 256 * 256 * color[:, :, 2]
     else:
-        print("shape is 1")
-    return color[0] + 256 * color[1] + 256 * 256 * color[2]
+        return color[0] + 256 * color[1] + 256 * 256 * color[2]
 
 def id2rgb(id_map):
     if isinstance(id_map, np.ndarray):
@@ -343,7 +342,46 @@ def generate_pyramid_anchors(scales, ratios, feature_shapes, feature_strides,
                                         feature_strides[i], anchor_stride))
     return np.concatenate(anchors, axis=0)
 
+class IdGenerator():
+    def __init__(self, categories):
+        self.taken_colors = set([0, 0, 0])
+        self.categories = {}
+        for class_id in categories:
+            category=categories[class_id]
+            self.categories[str(category['category_id'])]=category
+        for category in self.categories.values():
+            if category['isthing'] == 0:
+                self.taken_colors.add(tuple(category['color']))
 
+    def get_color(self, cat_id):
+        def random_color(base, max_dist=30):
+            new_color = base + np.random.randint(low=-max_dist,
+                                                 high=max_dist+1,
+                                                 size=3)
+            return tuple(np.maximum(0, np.minimum(255, new_color)))
+
+        category = self.categories[cat_id]
+        if category['isthing'] == 0:
+            return category['color']
+        base_color_array = category['color']
+        base_color = tuple(base_color_array)
+        if base_color not in self.taken_colors:
+            self.taken_colors.add(base_color)
+            return base_color
+        else:
+            while True:
+                color = random_color(base_color_array)
+                if color not in self.taken_colors:
+                     self.taken_colors.add(color)
+                     return color
+
+    def get_id(self, cat_id):
+        color = self.get_color(cat_id)
+        return rgb2id(color)
+
+    def get_id_and_color(self, cat_id):
+        color = self.get_color(cat_id)
+        return rgb2id(color), color
 
 
 

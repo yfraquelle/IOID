@@ -33,7 +33,7 @@ from utils.log_utils import log, printProgressBar
 from utils.loss_utils import compute_losses_CIN, compute_losses_PFPN, compute_saliency_loss, compute_interest_loss, compute_semantic_loss
 from ioi_selection.CIEDN import CIEDN
 from utils.Selection import extract_piece_group, map_pred_with_gt_mask, resize_influence_map,resize_semantic_label,filter_stuff_masks,filter_thing_masks
-from panoptic_gt_preprocess import IdGenerator
+from utils.utils import IdGenerator
 from compute_metric import maxminnorm
 
 ############################################################
@@ -327,10 +327,10 @@ class CIN(nn.Module):
             return default_collate(batch)
 
         train_set = Dataset(train_dataset, self.config)
-        train_generator = TorchDataLoader(train_set, collate_fn=my_collate_fn, batch_size=1, shuffle=True, num_workers=1)
+        train_generator = TorchDataLoader(train_set, collate_fn=my_collate_fn, batch_size=1, shuffle=True, num_workers=0)
 
         val_set = Dataset(val_dataset, self.config)
-        val_generator = TorchDataLoader(val_set, collate_fn=my_collate_fn, batch_size=1, shuffle=True, num_workers=1)
+        val_generator = TorchDataLoader(val_set, collate_fn=my_collate_fn, batch_size=1, shuffle=True, num_workers=0)
 
         self.set_trainable(layers)
 
@@ -551,7 +551,7 @@ class CIN(nn.Module):
         for inputs in datagenerator:
             if len(inputs)!=17:
                 continue
-            #else:
+            # else:
             try:
                 batch_count += 1
 
@@ -780,10 +780,11 @@ class CIN(nn.Module):
                     else:
                         step += 1
                 elif self.training_layers=='selection':
-
                     loss_func = nn.MSELoss()
-                    predict_input = [images, image_metas, gt_class_ids, gt_boxes, gt_masks, gt_segmentation, gt_image_instances]
+                    thing_detections, mrcnn_mask, semantic_segment, influence_map = self.predict_front([images, image_metas],mode='inference', limit="insttr")
+                    predict_input = [images, image_metas, gt_class_ids, gt_boxes, gt_masks, gt_segmentation, gt_image_instances,thing_detections, mrcnn_mask, semantic_segment, influence_map]
                     predictions, pair_labels, labels = self.predict_front(predict_input, mode="training", limit="selection")
+
                     interest_loss = loss_func(predictions, pair_labels)
                     loss = interest_loss
 
@@ -1156,27 +1157,32 @@ class CIN(nn.Module):
         """
 
         # Mold inputs to format expected by the neural network
+        print(images[0].shape)
         molded_images, image_metas, windows = self.mold_inputs(images)
 
         # Convert images to torch tensor
         molded_images = torch.from_numpy(molded_images.transpose(0, 3, 1, 2)).float()
+        image_metas = torch.from_numpy(image_metas)
 
         # To GPU
         if self.config.GPU_COUNT:
             molded_images = molded_images.cuda()
+            image_metas = image_metas.cuda()
 
         # Wrap in variable
         molded_images = Variable(molded_images, volatile=True)
 
         if limit=="p_interest":
             influence_map = self.predict_front([molded_images, image_metas], mode='inference', limit=limit)
-            influence_map=influence_map.squeeze(0).squeeze(0).data.cpu().numpy()
-            # influence_map=np.where(influence_map*255>100,1,0)
-            #plt.figure()
-            #plt.imshow(influence_map)
-            #plt.show()
-            image_id, image_shape, window = image_metas[0][0],image_metas[0][1:4],image_metas[0][4:8]
+
+            if self.config.GPU_COUNT:
+                image_metas = image_metas.int().data.cpu().numpy()
+            else:
+                image_metas = image_metas.int().data.numpy()
+            image_id, image_shape, window = image_metas[0][0], image_metas[0][1:4], image_metas[0][4:8]
             top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
+
+            influence_map=influence_map.squeeze(0).squeeze(0).data.cpu().numpy()
             influence_map = resize_influence_map(influence_map,(self.config.IMAGE_SIZE,self.config.IMAGE_SIZE))
             influence_map = influence_map[top_pad:top_pad_h, left_pad:left_pad_w]
             influence_map = scipy.misc.imresize(influence_map, image_shape[:2], interp='bilinear')
@@ -1185,6 +1191,13 @@ class CIN(nn.Module):
             thing_detections, thing_masks, semantic_labels = self.predict_front(
                 [molded_images, image_metas], mode='inference',limit="instance") # [x,5],[x,28,28,81]
             semantic_segment, stuff_detections, stuff_masks = generate_stuff(semantic_labels)  # [y, 5],[y, 500, 500]
+
+            if self.config.GPU_COUNT:
+                image_metas = image_metas.int().data.cpu().numpy()
+            else:
+                image_metas = image_metas.int().data.numpy()
+            image_id, image_shape, window = image_metas[0][0], image_metas[0][1:4], image_metas[0][4:8]
+            top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
 
             results = []
             # image=images[0]
@@ -1195,9 +1208,6 @@ class CIN(nn.Module):
                 thing_masks = thing_masks.squeeze(0)  # [x,28,28,81]
                 stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
                 stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
-
-                image_id, image_shape, window = image_metas[0][0],image_metas[0][1:4],image_metas[0][4:8]
-                top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
 
                 semantic_segment = resize_semantic_label(semantic_segment,(self.config.IMAGE_SIZE,self.config.IMAGE_SIZE))
                 semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
@@ -1216,23 +1226,31 @@ class CIN(nn.Module):
                     "stuff_masks": stuff_masks_unmold,
                     "semantic_segment": semantic_segment
                 })
-            elif len(thing_detections.shape) == 1 and len(stuff_detections.shape)>1:
-                stuff_detections = stuff_detections.data.numpy()  # [y,5]
-                stuff_masks = stuff_masks.data.numpy()  # [y,500,500]
+            elif len(thing_detections.shape) == 1 and len(stuff_detections.shape) > 1:
+                stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
+                stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+
+                semantic_segment = resize_semantic_label(semantic_segment,
+                                                         (self.config.IMAGE_SIZE, self.config.IMAGE_SIZE))
+                semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
+                semantic_segment = scipy.ndimage.zoom(semantic_segment, [image_shape[0] / (top_pad_h - top_pad),
+                                                                         image_shape[1] / (left_pad_w - left_pad)],
+                                                      mode='nearest', order=0)
+
+                stuff_class_ids, stuff_boxes, stuff_masks_unmold = filter_stuff_masks(stuff_detections, stuff_masks,
+                                                                                      image_shape, window)
 
                 results.append({
-                    "stuff_rois": stuff_detections,
-                    "stuff_masks": stuff_masks,
-                    "segment": semantic_segment
+                    "stuff_boxes": stuff_boxes,
+                    "stuff_class_ids": stuff_class_ids,
+                    "stuff_masks": stuff_masks_unmold,
+                    "semantic_segment": semantic_segment
                 })
             elif len(thing_detections.shape) > 1 and len(stuff_detections.shape)==1:
                 thing_detections = thing_detections.data.cpu().numpy()
                 thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
                 thing_detections = thing_detections.squeeze(0)  # [x,6]
                 thing_masks = thing_masks.squeeze(0)  # [x,28,28,81]
-
-                image_id, image_shape, window = image_metas[0][0],image_metas[0][1:4],image_metas[0][4:8]
-                top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
 
                 semantic_segment = resize_semantic_label(semantic_segment,(self.config.IMAGE_SIZE,self.config.IMAGE_SIZE))
                 semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
@@ -1253,10 +1271,21 @@ class CIN(nn.Module):
                 })
             return results
         elif limit == "insttr":
-            image_id, image_shape, window = image_metas[0][0], image_metas[0][1:4], image_metas[0][4:8]
             thing_detections, thing_masks, semantic_labels,influence_map = self.predict_front([molded_images, image_metas], mode='inference',limit=limit) # [x,5],[x,28,28,81]
             semantic_segment, stuff_detections, stuff_masks = generate_stuff(semantic_labels)  # [y, 5],[y, 500, 500] [1, 134, 512, 512]
+
+            if self.config.GPU_COUNT:
+                image_metas = image_metas.int().data.cpu().numpy()
+            else:
+                image_metas = image_metas.int().data.numpy()
+            image_id, image_shape, window = image_metas[0][0], image_metas[0][1:4], image_metas[0][4:8]
+            top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
+
             influence_map = influence_map.squeeze(0).squeeze(0).data.cpu().numpy()  # [128,128]
+
+            influence_map = resize_influence_map(influence_map,(self.config.IMAGE_SIZE,self.config.IMAGE_SIZE))
+            influence_map = influence_map[top_pad:top_pad_h, left_pad:left_pad_w]
+            influence_map = scipy.misc.imresize(influence_map, image_shape[:2], interp='bilinear')
 
             results = []
             if len(thing_detections.shape) > 1 and len(stuff_detections.shape)>1:
@@ -1266,9 +1295,6 @@ class CIN(nn.Module):
                 thing_masks = thing_masks.squeeze(0)  # [x,28,28,81]
                 stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
                 stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
-
-                image_id, image_shape, window = image_metas[0][0],image_metas[0][1:4],image_metas[0][4:8]
-                top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
 
                 semantic_segment = resize_semantic_label(semantic_segment,(self.config.IMAGE_SIZE,self.config.IMAGE_SIZE))
                 semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
@@ -1291,6 +1317,11 @@ class CIN(nn.Module):
             elif len(thing_detections.shape) == 1 and len(stuff_detections.shape)>1:
                 stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
                 stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+
+                semantic_segment = resize_semantic_label(semantic_segment,(self.config.IMAGE_SIZE, self.config.IMAGE_SIZE))
+                semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
+                semantic_segment = scipy.ndimage.zoom(semantic_segment, [image_shape[0] / (top_pad_h - top_pad),image_shape[1] / (left_pad_w - left_pad)],mode='nearest', order=0)
+
                 stuff_class_ids, stuff_boxes, stuff_masks_unmold = filter_stuff_masks(stuff_detections, stuff_masks,image_shape, window)
 
                 results.append({
@@ -1305,9 +1336,6 @@ class CIN(nn.Module):
                 thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
                 thing_detections = thing_detections.squeeze(0)  # [x,6]
                 thing_masks = thing_masks.squeeze(0)  # [x,28,28,81]
-
-                image_id, image_shape, window = image_metas[0][0],image_metas[0][1:4],image_metas[0][4:8]
-                top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
 
                 semantic_segment = resize_semantic_label(semantic_segment,(self.config.IMAGE_SIZE,self.config.IMAGE_SIZE))
                 semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
@@ -1330,7 +1358,15 @@ class CIN(nn.Module):
             return results
         elif limit=="selection":
             # Run object detection [b,x,c,h,w]
-            predictions, segments_info = self.predict_front([molded_images, image_metas], mode='inference', limit=limit)
+            predictions, segments_info, panoptic_result = self.predict_front([molded_images, image_metas], mode='inference', limit=limit)
+
+            if self.config.GPU_COUNT:
+                image_metas = image_metas.int().data.cpu().numpy()
+            else:
+                image_metas = image_metas.int().data.numpy()
+            image_id, image_shape, window = image_metas[0][0], image_metas[0][1:4], image_metas[0][4:8]
+            top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
+
             num = len(segments_info)  # the num of the instances
             prediction_list = []
             # predictions = predictions.cpu().detach().numpy()
@@ -1340,16 +1376,23 @@ class CIN(nn.Module):
             idx = 0
             CIRNN_pred_dict = {}
             prediction_list = maxminnorm(prediction_list)
+            ioid_result=np.zeros_like(panoptic_result)
+            panoptic_result_instance_id_map=utils.rgb2id(panoptic_result)
             for segment_info_id in segments_info:
                 if prediction_list[idx] > self.config.SELECTION_THRESHOLD+0.05:
                     CIRNN_pred_dict[segment_info_id] = segments_info[segment_info_id]
+                    ioid_result[panoptic_result_instance_id_map==int(segment_info_id)]=utils.id2rgb(int(segment_info_id))
                 idx += 1
-            return CIRNN_pred_dict
+            return CIRNN_pred_dict, ioid_result
 
     def predict_front(self, input, mode, limit=""):
         molded_images = input[0]
-        image_metas = input[1]
+        if self.config.GPU_COUNT:
+            image_metas = input[1].int().data.cpu().numpy()
+        else:
+            image_metas = input[1].int().data.numpy()
         image_id = image_metas[0][0]
+        # print(image_metas[0][0])
 
         if mode == 'training':
             self.train()
@@ -1364,6 +1407,57 @@ class CIN(nn.Module):
 
             self.apply(set_bn_eval)
 
+        if mode=="training" and limit == 'selection':
+            # TODO_wdd: add the ciedn model
+            gt_segmentation = input[5]
+            image_info = input[6]
+            gt_instance_dict = image_info['instances']
+            detections = input[7]
+            mrcnn_mask_d = input[8]
+            semantic_segment = input[9]
+            influence_map = input[10]
+
+            result = self.detect_objects(detections, mrcnn_mask_d, semantic_segment, influence_map, image_metas)[0]
+
+
+            # visualize.display_instances(img, result['thing_boxes'], result['thing_masks'], result['thing_class_ids'], class_names)
+            semantic_labels, influence_map, panoptic_result, segments_info = self.predict_segment(result, image_metas)
+
+            instance_pred_gt_dict, instance_gt_pred_dict = self.map_instance_to_gt(gt_instance_dict, segments_info,gt_segmentation, panoptic_result)
+
+            ioi_image_dict = self.generate_image_dict(image_info, instance_pred_gt_dict, segments_info)
+            # add the labeled attribute in the segments_info
+            # ioi_image_dict
+            # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ middle_process
+
+            ioi_segments_info = ioi_image_dict['segments_info']
+            if torch.is_tensor(image_metas[0][1:4]):
+                image_shape = image_metas[0][1:4].numpy().astype('int32')
+            else:
+                image_shape = image_metas[0][1:4].astype('int32')
+
+            instance_groups, boxes, class_ids, labels, pair_label = self.construct_dataset(semantic_labels,
+                                                                                           influence_map,
+                                                                                           panoptic_result,
+                                                                                           ioi_segments_info,
+                                                                                           image_shape,
+                                                                                           mode)
+            # instance_groups, boxes, class_ids, labels,pair_label
+            # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ dataset
+            if self.config.GPU_COUNT:
+                instance_groups = Variable(torch.unsqueeze(torch.from_numpy(instance_groups), 0)).float().cuda()
+                boxes = Variable(torch.unsqueeze(torch.from_numpy(boxes), 0)).float().cuda()
+                class_ids = Variable(torch.unsqueeze(torch.from_numpy(class_ids), 0)).float().cuda()
+                gt = Variable(torch.unsqueeze(torch.from_numpy(labels), 0)).float().cuda()
+                labels = Variable(torch.unsqueeze(torch.from_numpy(labels), 0)).float().cuda()
+                pair_label = Variable(torch.from_numpy(pair_label)).float().cuda().squeeze(0)
+
+            predictions = self.ciedn(instance_groups).squeeze(1)
+            # print("instance_groups", instance_groups.shape)
+            # print("labels", labels.shape)
+            # print("pair_label", pair_label.shape)
+            # print("predictions", len(predictions))
+            return predictions, pair_label, labels
         # ！！！！！！！！！！！！！！！！！！！ START ！！！！！！！！！！！！！！！！！！！
         # print("Image:")
         # print(molded_images.shape)
@@ -1416,6 +1510,7 @@ class CIN(nn.Module):
         # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ RPN & ROIAlign
 
         semantic_segment = self.semantic(mrcnn_feature_maps)
+
         # print("Semantic:")
         # print(semantic_segment.shape) # (1,134,500,500)
         # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ SEMANTIC
@@ -1442,97 +1537,37 @@ class CIN(nn.Module):
             # Subsamples proposals and generates target outputs for training
             # Note that proposal class IDs, gt_boxes, and gt_masks are zero
             # padded. Equally, returned rois and targets are zero padded.
-            rois, target_class_ids, target_deltas, target_mask = \
-                detection_target_layer(rpn_rois, gt_class_ids, gt_boxes, gt_masks, self.config)
+            if limit == "instance" or limit == "insttr":
+                rois, target_class_ids, target_deltas, target_mask = \
+                    detection_target_layer(rpn_rois, gt_class_ids, gt_boxes, gt_masks, self.config)
 
-            if not rois.size():
-                mrcnn_class_logits = Variable(torch.FloatTensor())
-                mrcnn_class = Variable(torch.IntTensor())
-                mrcnn_bbox = Variable(torch.FloatTensor())
-                mrcnn_mask = Variable(torch.FloatTensor())
-                if self.config.GPU_COUNT:
-                    mrcnn_class_logits = mrcnn_class_logits.cuda()
-                    mrcnn_class = mrcnn_class.cuda()
-                    mrcnn_bbox = mrcnn_bbox.cuda()
-                    mrcnn_mask = mrcnn_mask.cuda()
-            else:
-                mrcnn_class_logits, mrcnn_class, mrcnn_bbox = self.classifier(mrcnn_feature_maps, rois)
-                mrcnn_mask = self.mask(mrcnn_feature_maps, rois)
-            # print(mrcnn_class_logits.shape) # x,91
-            # print(mrcnn_class.shape) # x,91
-            # print(mrcnn_bbox.shape)  # x,91,4 [y1,x1,y2,x2]
-            # print(mrcnn_mask.shape)  # x,91,28,28
-            # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ THING
-
-            if limit == "instance":
-                return [rpn_class_logits, rpn_bbox, target_class_ids, mrcnn_class_logits, target_deltas, mrcnn_bbox,
-                        target_mask, mrcnn_mask, semantic_segment]
-            elif limit == "insttr":
-                influence_preds = self.saliency(c1_out, c2_out, c3_out, c4_out, c5_out)
-                return [rpn_class_logits, rpn_bbox, target_class_ids, mrcnn_class_logits, target_deltas, mrcnn_bbox,
-                        target_mask, mrcnn_mask, semantic_segment, influence_preds]
-            elif limit == 'selection':
-                # TODO_wdd: add the ciedn model
-                gt_segmentation = input[5]
-                image_info = input[6]
-                gt_instance_dict = image_info['instances']
-                influence_map = self.saliency(c1_out, c2_out, c3_out, c4_out, c5_out)[4]  # (1,1,128,128)
-                mrcnn_class_logits, mrcnn_class, mrcnn_bbox = self.classifier(mrcnn_feature_maps, rpn_rois)
-                detections = detection_layer(self.config, rpn_rois, mrcnn_class, mrcnn_bbox, image_metas)  # 34,6
-
-                # Add back batch dimension
-                if len(detections.shape)>1:
-                    detections = detections.unsqueeze(0)  # [1, x, 6]
-                mrcnn_mask = mrcnn_mask.unsqueeze(0)  # [1, x, 81, 28, 28]
-
-                # detect 中 predict_front 的结果
-                # detections, mrcnn_mask, semantic_segment, influence_map # [1, x, 6],[1, x, 81, 28, 28],[1,134,500,500],[1,1,128,128]
-                # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ predict_front mode = inference
-
-                result = self.detect_objects(detections, mrcnn_mask, semantic_segment, influence_map, image_metas)[0]
-                # result detect 中的result
-                # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ detect
-
-                semantic_labels, influence_map, panoptic_result, segments_info = self.predict_segment(result, image_metas)
-                # semantic_labels, influence_map, panoptic_result, segments_info
-                # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ CIN_predict_alls
-
-                instance_pred_gt_dict, instance_gt_pred_dict = self.map_instance_to_gt(gt_instance_dict, segments_info,
-                                                                                  gt_segmentation, panoptic_result)
-
-                ioi_image_dict = self.generate_image_dict(image_info, instance_pred_gt_dict, segments_info)
-                # add the labeled attribute in the segments_info
-                # ioi_image_dict
-                # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ middle_process
-
-                ioi_segments_info = ioi_image_dict['segments_info']
-                if torch.is_tensor(image_metas[0][1:4]):
-                    image_shape = image_metas[0][1:4].numpy().astype('int32')
+                if len(rois.shape)>1:
+                    mrcnn_class_logits, mrcnn_class, mrcnn_bbox = self.classifier(mrcnn_feature_maps, rois)
+                    mrcnn_mask = self.mask(mrcnn_feature_maps, rois)
                 else:
-                    image_shape = image_metas[0][1:4].astype('int32')
+                    mrcnn_class_logits = Variable(torch.FloatTensor())
+                    mrcnn_class = Variable(torch.IntTensor())
+                    mrcnn_bbox = Variable(torch.FloatTensor())
+                    mrcnn_mask = Variable(torch.FloatTensor())
+                    if self.config.GPU_COUNT:
+                        mrcnn_class_logits = mrcnn_class_logits.cuda()
+                        mrcnn_class = mrcnn_class.cuda()
+                        mrcnn_bbox = mrcnn_bbox.cuda()
+                        mrcnn_mask = mrcnn_mask.cuda()
+                # print(mrcnn_class_logits.shape) # x,91
+                # print(mrcnn_class.shape) # x,91
+                # print(mrcnn_bbox.shape)  # x,91,4 [y1,x1,y2,x2]
+                # print(mrcnn_mask.shape)  # x,91,28,28
+                # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ THING
 
-                instance_groups, boxes, class_ids, labels, pair_label = self.construct_dataset(semantic_labels,
-                                                                                               influence_map,
-                                                                                               panoptic_result,
-                                                                                               ioi_segments_info,
-                                                                                               image_shape,
-                                                                                               mode)
-                # instance_groups, boxes, class_ids, labels,pair_label
-                # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ dataset
-                if self.config.GPU_COUNT:
-                    instance_groups = Variable(torch.unsqueeze(torch.from_numpy(instance_groups), 0)).float().cuda()
-                    boxes = Variable(torch.unsqueeze(torch.from_numpy(boxes), 0)).float().cuda()
-                    class_ids = Variable(torch.unsqueeze(torch.from_numpy(class_ids), 0)).float().cuda()
-                    gt = Variable(torch.unsqueeze(torch.from_numpy(labels), 0)).float().cuda()
-                    labels = Variable(torch.unsqueeze(torch.from_numpy(labels), 0)).float().cuda()
-                    pair_label = Variable(torch.from_numpy(pair_label)).float().cuda().squeeze(0)
+                if limit == "instance":
+                    return [rpn_class_logits, rpn_bbox, target_class_ids, mrcnn_class_logits, target_deltas, mrcnn_bbox,
+                            target_mask, mrcnn_mask, semantic_segment]
+                elif limit == "insttr":
+                    influence_preds = self.saliency(c1_out, c2_out, c3_out, c4_out, c5_out)
+                    return [rpn_class_logits, rpn_bbox, target_class_ids, mrcnn_class_logits, target_deltas, mrcnn_bbox,
+                            target_mask, mrcnn_mask, semantic_segment, influence_preds]
 
-                predictions = self.ciedn(instance_groups).squeeze(1)
-                # print("instance_groups", instance_groups.shape)
-                # print("labels", labels.shape)
-                # print("pair_label", pair_label.shape)
-                # print("predictions", len(predictions))
-                return predictions, pair_label, labels
             elif limit == "all":
                 gt_segmentation = input[5]
                 image_info = input[6]
@@ -1540,16 +1575,27 @@ class CIN(nn.Module):
                 influence_map = self.saliency(c1_out, c2_out, c3_out, c4_out, c5_out)[4]  # (1,1,128,128)
                 mrcnn_class_logits, mrcnn_class, mrcnn_bbox = self.classifier(mrcnn_feature_maps, rpn_rois)
                 detections = detection_layer(self.config, rpn_rois, mrcnn_class, mrcnn_bbox, image_metas)  # 34,6
+                h, w = self.config.IMAGE_SHAPE[:2]
+                scale = Variable(torch.from_numpy(np.array([h, w, h, w])).float(), requires_grad=False)
+                if self.config.GPU_COUNT:
+                    scale = scale.cuda()
+                # print("========================detections.shape", detections.shape)
+                if len(detections.shape)>1:
+                    detection_boxes = detections[:, :4] / scale
 
+                    # Add back batch dimension
+                    detection_boxes = detection_boxes.unsqueeze(0)
+                    mrcnn_mask_d = self.mask(mrcnn_feature_maps, detection_boxes)
+                    # Add back batch dimension
                 # Add back batch dimension
                 detections = detections.unsqueeze(0)  # [1, x, 6]
-                mrcnn_mask = mrcnn_mask.unsqueeze(0)  # [1, x, 81, 28, 28]
+                mrcnn_mask_d = mrcnn_mask_d.unsqueeze(0)  # [1, x, 81, 28, 28]
 
                 # detect 中 predict_front 的结果
                 # detections, mrcnn_mask, semantic_segment, influence_map # [1, x, 6],[1, x, 81, 28, 28],[1,134,500,500],[1,1,128,128]
                 # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ predict_front mode = inference
 
-                result = self.detect_objects(detections, mrcnn_mask, semantic_segment, influence_map, image_metas)[0]
+                result = self.detect_objects(detections, mrcnn_mask_d, semantic_segment, influence_map, image_metas)[0]
                 # result detect 中的result
                 # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ detect
 
@@ -1597,7 +1643,6 @@ class CIN(nn.Module):
             if limit == "instance":
                 mrcnn_class_logits, mrcnn_class, mrcnn_bbox = self.classifier(mrcnn_feature_maps, rpn_rois)
                 detections = detection_layer(self.config, rpn_rois, mrcnn_class, mrcnn_bbox, image_metas)  # 34,6
-
                 h, w = self.config.IMAGE_SHAPE[:2]
                 scale = Variable(torch.from_numpy(np.array([h, w, h, w])).float(), requires_grad=False)
                 if self.config.GPU_COUNT:
@@ -1658,7 +1703,6 @@ class CIN(nn.Module):
                         mrcnn_mask=mrcnn_mask.cuda()
                 return [detections, mrcnn_mask, semantic_segment,
                         influence_map]  # [1, x, 6],[1, x, 81, 28, 28],[1,134,500,500],[1,1,128,128]
-
             elif limit == 'selection':
                 # TODO_wdd: 添加selection分支代码
                 influence_map = self.saliency(c1_out, c2_out, c3_out, c4_out, c5_out)[4]  # (1,1,128,128)
@@ -1666,22 +1710,29 @@ class CIN(nn.Module):
 
                 detections = detection_layer(self.config, rpn_rois, mrcnn_class, mrcnn_bbox, image_metas)  # 34,6
 
-                h, w = self.config.IMAGE_SHAPE[:2]
-                scale = Variable(torch.from_numpy(np.array([h, w, h, w])).float(), requires_grad=False)
-                if self.config.GPU_COUNT:
-                    scale = scale.cuda()
-                detection_boxes = detections[:, :4] / scale
+                if len(detections.shape)>1:
+                    h, w = self.config.IMAGE_SHAPE[:2]
+                    scale = Variable(torch.from_numpy(np.array([h, w, h, w])).float(), requires_grad=False)
+                    if self.config.GPU_COUNT:
+                        scale = scale.cuda()
+                    detection_boxes = detections[:, :4] / scale
 
-                # Add back batch dimension
-                detection_boxes = detection_boxes.unsqueeze(0)
+                    # Add back batch dimension
+                    detection_boxes = detection_boxes.unsqueeze(0)
 
-                # Create masks for detections
-                mrcnn_mask = self.mask(mrcnn_feature_maps, detection_boxes)  # x, 134, 28, 28
+                    # Create masks for detections
+                    mrcnn_mask = self.mask(mrcnn_feature_maps, detection_boxes)  # x, 134, 28, 28
 
-                # Add back batch dimension
-                detections = detections.unsqueeze(0)  # [1, x, 6]
-                mrcnn_mask = mrcnn_mask.unsqueeze(0)  # [1, x, 81, 28, 28]
-                # detections, mrcnn_mask, semantic_segment, influence_map
+                    # Add back batch dimension
+                    detections = detections.unsqueeze(0)  # [1, x, 6]
+                    mrcnn_mask = mrcnn_mask.unsqueeze(0)  # [1, x, 81, 28, 28]
+                    # detections, mrcnn_mask, semantic_segment, influence_map
+                else:
+                    detections = torch.Tensor()
+                    mrcnn_mask_d = torch.Tensor()
+                    if self.config.GPU_COUNT:
+                        detections = detections.cuda()
+                        mrcnn_mask_d = mrcnn_mask_d.cuda()
 
                 result = self.detect_objects(detections, mrcnn_mask, semantic_segment, influence_map, image_metas)[0]
                 # visualize.display_instances(img, result['thing_boxes'], result['thing_masks'], result['thing_class_ids'], class_names)
@@ -1698,7 +1749,7 @@ class CIN(nn.Module):
                     instance_groups = Variable(torch.unsqueeze(torch.from_numpy(instance_groups), 0)).float().cuda() # 1,19,2,56,56
 
                 predictions = self.ciedn(instance_groups).squeeze(1).data.cpu().numpy()
-                return predictions, segments_info
+                return predictions, segments_info, panoptic_result
 
     def predict_back(self,image_metas,thing_detections,thing_masks,semantic_segment,influence_map):
         img=scipy.misc.imread("/media/yuf/Data/magus/database/COCO/train2017/"+str(int(image_metas[0][0])).zfill(12)+".jpg")
@@ -1852,7 +1903,12 @@ class CIN(nn.Module):
 
     def detect_objects(self, thing_detections, thing_masks, semantic_segment, influence_map, image_metas):
         semantic_segment, stuff_detections, stuff_masks = generate_stuff(semantic_segment)  # [y, 5],[y, 500, 500] [1, 134, 512, 512]
+        # plt.figure()
+        # plt.imshow(semantic_segment)
+        # plt.show()
         influence_map = influence_map.squeeze(0).squeeze(0).data.cpu().numpy()  # [128,128]
+
+        image_id, image_shape, window = image_metas[0][0], image_metas[0][1:4], image_metas[0][4:8]
 
         results = []
         if len(thing_detections.shape) > 1 and len(stuff_detections.shape) > 1:
@@ -1863,9 +1919,7 @@ class CIN(nn.Module):
             stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
             stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
 
-            image_id, image_shape, window = image_metas[0][0], image_metas[0][1:4], image_metas[0][4:8]
             top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
-
             semantic_segment = resize_semantic_label(semantic_segment, (self.config.IMAGE_SIZE, self.config.IMAGE_SIZE))
             semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
             semantic_segment = scipy.ndimage.zoom(semantic_segment, [image_shape[0] / (top_pad_h - top_pad),
@@ -1892,6 +1946,13 @@ class CIN(nn.Module):
         elif len(thing_detections.shape) == 1 and len(stuff_detections.shape) > 1:
             stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
             stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+
+            semantic_segment = resize_semantic_label(semantic_segment, (self.config.IMAGE_SIZE, self.config.IMAGE_SIZE))
+            semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
+            semantic_segment = scipy.ndimage.zoom(semantic_segment, [image_shape[0] / (top_pad_h - top_pad),
+                                                                     image_shape[1] / (left_pad_w - left_pad)],
+                                                  mode='nearest', order=0)
+
             stuff_class_ids, stuff_boxes, stuff_masks_unmold = filter_stuff_masks(stuff_detections, stuff_masks,
                                                                                   image_shape, window)
 
@@ -1944,7 +2005,7 @@ class CIN(nn.Module):
         else:
             image_shape = image_metas[0][1:4].cpu().numpy().astype('int32')
         panoptic_result=np.zeros(image_shape)
-        semantic_result = np.zeros(img.shape)
+        semantic_result = np.zeros(image_shape)
 
         information_collector={}
         class_dict = self.class_dict
@@ -1973,6 +2034,7 @@ class CIN(nn.Module):
                 information_collector[str(id)]={"id": int(id), "bbox": [int(thing_boxes[i][0]),int(thing_boxes[i][1]),int(thing_boxes[i][2]),int(thing_boxes[i][3])], \
                                                 "category_id": category_id,"category_name":category_name, \
                                                 'mask': mask}
+        # scipy.misc.imsave("../CIN_panoptic_all/test4.png", panoptic_result)
         return semantic_result, influence_map, panoptic_result, information_collector
 
     def construct_dataset(self, semantic_label, saliency_map, panoptic_result, ioi_segments_info, image_shape, mode):
@@ -1996,12 +2058,13 @@ class CIN(nn.Module):
         semantic_label = np.pad(semantic_label, [(top_pad, bottom_pad), (left_pad, right_pad)], mode='constant',
                                 constant_values=0)
 
-        saliency_map = scipy.misc.imresize(saliency_map, (new_height, new_width), interp='nearest')
-        if len(saliency_map.shape) == 3:
-            saliency_map = saliency_map[:, :, 0]
-        saliency_map = np.pad(saliency_map, [(top_pad, bottom_pad), (left_pad, right_pad)], mode='constant',
-                              constant_values=0)
-
+        saliency_map = scipy.misc.imresize(saliency_map, (self.config.IMAGE_SIZE, self.config.IMAGE_SIZE), interp='nearest')
+        # plt.figure()
+        # plt.imshow(semantic_label)
+        # plt.show()
+        # plt.imshow(saliency_map)
+        # plt.show()
+        # exit()
         labels = []
         class_ids = []
         boxes = []
@@ -2055,9 +2118,18 @@ class CIN(nn.Module):
 
         pair_label = []
         for i, a_label in enumerate(labels):
+            if a_label:
+                a_label_value = 1
+            else:
+                a_label_value = 0
             for j, b_label in enumerate(labels):
-                pair_label.append((a_label + b_label) / 2.0)
+                if b_label:
+                    b_label_value = 1
+                else:
+                    b_label_value = 0
+                pair_label.append((a_label_value + b_label_value) / 2.0)
         pair_label = np.array(pair_label)
+
         instance_groups = np.stack(instance_groups)
         class_ids = np.array(class_ids, dtype=np.float32)
         labels = np.array(labels, dtype=np.float32)
@@ -2092,18 +2164,17 @@ class CIN(nn.Module):
                 i_iou = compute_pixel_iou(instance_dict[instance_id]['mask'], gt_instance_dict[gt_instance_id]['mask'])
                 if gt_instance_id not in instance_gt_pred_dict:
                     instance_gt_pred_dict[gt_instance_id] = {
-                        "labeled": gt_instance_dict[gt_instance_id]['labeled'], "pred": []}
+                        "labeled": gt_instance_dict[gt_instance_id]['labeled'].data.numpy()[0]==1, "pred": []}
                 if i_iou >= self.config.MAP_IOU and instance_dict[instance_id]['category_id'] == gt_instance_dict[gt_instance_id][
-                    'category_id'] and i_iou > max_iou:
+                    'category_id'].data.numpy()[0] and i_iou > max_iou:
                     max_gt_instance_id = gt_instance_id
                     max_iou = i_iou
                     instance_gt_pred_dict[gt_instance_id]['pred'].append(instance_id)
             if max_gt_instance_id != "":
                 instance_pred_gt_dict[instance_id] = {"gt_instance_id": max_gt_instance_id,
-                                                      "label": gt_instance_dict[max_gt_instance_id]['labeled']}
+                                                      "label": gt_instance_dict[max_gt_instance_id]['labeled'].data.numpy()[0]==1}
             else:
                 instance_pred_gt_dict[instance_id] = {"gt_instance_id": "", "label": False}
-
         return instance_pred_gt_dict, instance_gt_pred_dict
 
     def generate_image_dict(self, image_info, pred_to_gt, segments_info):
@@ -2116,5 +2187,4 @@ class CIN(nn.Module):
         ioi_images_dict = {"image_id": image_info['image_id'], "image_name": image_info['image_name'],
                            "height": image_info['height'], "width": image_info['width'],
                            'segments_info': segments_info}
-
         return ioi_images_dict

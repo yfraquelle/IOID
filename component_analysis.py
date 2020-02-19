@@ -14,6 +14,7 @@ from config import Config
 from DatasetLib import OOIDataset,Dataset
 from ioi_selection.CIEDN import CIEDN
 from compute_metric import compare_mask, write_csv, draw_pictures
+from middle_process import extract_json_from_panoptic_semantic, map_instance_to_gt, generate_image_dict, split_dataset, filter_by_saliency, compute_instance_saliency, compute_instance_saliency_list
 
 import argparse
 import yaml
@@ -27,13 +28,13 @@ MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ins_ext", type=str,
-                        default='CIN_panoptic_all_old',
+                        default='CIN_panoptic_all',
                         help="the path of the image to be detected")
     parser.add_argument("--sem_ext", type=str,
-                        default='CIN_semantic_all_old',
+                        default='CIN_semantic_all',
                         help="the path of the image to be detected")
     parser.add_argument("--p_intr_ext", type=str,
-                        default='CIN_saliency_all_old',
+                        default='CIN_saliency_all',
                         help="the path of the image to be detected")
     parser.add_argument("--config", type=str,
                         default="configs/component_analysis_config.yaml",
@@ -51,12 +52,12 @@ class CINConfig(Config):
 
 
 def predict(config, panoptic_model, semantic_model, saliency_model):
-    log_file="logs/CIN_ooi_100_selection.pth"
+    # log_file="logs/CIN_ooi_100_selection.pth"
     ciedn = CIEDN().cuda()
-    state_dict = torch.load(log_file)
+    state_dict = torch.load(config.WEIGHT_PATH)
     ciedn.load_state_dict(state_dict, strict=False)
 
-    images = json.load(open("data/middle/ioi_val_images_dict_"+panoptic_model+"_"+saliency_model+".json", 'r'))
+    images = json.load(open("data/middle/ioi_val_images_dict_"+panoptic_model+".json", 'r'))
     class_dict=json.load(open("data/class_dict.json", 'r'))
     prediction_list = []
     gt_list = []
@@ -165,6 +166,10 @@ def compute_metric(panoptic_model, saliency_model):
     write_csv(['CIN_panoptic_all'], "results/ciedn_result/pred4_gt4_result")
     # draw_pictures(wait_compares,result,saliency_train_model)
 
+def middle_process(segmentation_model, semantic_model, saliency_model):
+    extract_json_from_panoptic_semantic(segmentation_model,semantic_model)
+    map_instance_to_gt(segmentation_model)
+
 if __name__ == '__main__':
     panoptic_model = ''
     semantic_model = ''
@@ -188,5 +193,6 @@ if __name__ == '__main__':
     # saliency_model_list=[saliency_train_model,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency']
     # panoptic_model_list=['deeplab_panoptic','maskrcnn_panoptic']
 
-    # predict(config, panoptic_model,semantic_model, saliency_model)
+    middle_process(segmentation_model, semantic_model, saliency_model)
+    predict(config, panoptic_model,semantic_model, saliency_model)
     compute_metric(panoptic_model, saliency_model)

@@ -52,8 +52,8 @@ def run(config):
             batch = [[torch.from_numpy(np.zeros([1, 1]))]]
         return default_collate(batch)
 
-    state_dict_dir = os.path.join(MODEL_DIR, "CIN_ooi_all.pth")
-    state_dict = torch.load(state_dict_dir)
+    # state_dict_dir = os.path.join(MODEL_DIR, "CIN_ooi_all.pth")
+    state_dict = torch.load(config.WEIGHT_PATH)
     model.load_state_dict(state_dict, strict=False)
 
     val_dataset = OOIDataset('val')

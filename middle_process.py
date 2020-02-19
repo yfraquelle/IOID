@@ -9,14 +9,12 @@ from matplotlib import pyplot as plt
 import multiprocessing
 from PIL import Image
 
-def extract_json_from_panoptic_semantic(segmentation_model,semantic_model,only_val=False):
-    if only_val:
-        images_png = []
-        val_images_dict = json.load(open("data/val_images_dict.json"))
-        for val_image_id in val_images_dict:
-            images_png.append(val_images_dict[val_image_id]['image_name'].replace('jpg', 'png'))
-    else:
-        images_png=os.listdir("../"+segmentation_model)
+def extract_json_from_panoptic_semantic(segmentation_model,semantic_model):
+    images_png = []
+    val_images_dict = json.load(open("data/val_images_dict.json"))
+    for val_image_id in val_images_dict:
+        images_png.append(val_images_dict[val_image_id]['image_name'].replace('jpg', 'png'))
+
     class_id_dict=json.load(open("data/class_dict.json",'r'))
     instance_panoptic_all={}
     count=0
@@ -48,9 +46,7 @@ def map_instance_to_gt(segmentation_model):
         union = bool_mask_pred + bool_mask_gt
         return np.count_nonzero(intersection) / np.count_nonzero(union)
 
-    gt_train_image_instances = json.load(open("data/train_images_dict.json", 'r'))
     gt_val_image_instances = json.load(open('data/val_images_dict.json', 'r'))
-    gt_image_instances = dict(gt_train_image_instances, **gt_val_image_instances)
     image_instances = json.load(open("data/middle/ioi_"+segmentation_model+".json", 'r'))
     instance_pred_gt_dict = {}
     instance_gt_pred_dict = {}
@@ -63,9 +59,9 @@ def map_instance_to_gt(segmentation_model):
 
         segmentation = scipy.misc.imread("../"+segmentation_model+"/" + image_id.zfill(12) + ".png")
         gt_segmentation = scipy.misc.imread(
-            "/home/magus/datasets/coco/annotations/panoptic_train2017/" + image_id.zfill(12) + ".png")
+            "../data/ioid_panoptic/" + image_id.zfill(12) + ".png")
         instance_dict = image_instances[image_id]
-        gt_instance_dict = gt_image_instances[image_id]['instances']
+        gt_instance_dict = gt_val_image_instances[image_id]['instances']
 
         segmentation_id = utils.rgb2id(segmentation)
         for instance_id in instance_dict:

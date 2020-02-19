@@ -29,7 +29,7 @@ class CINConfig(Config):
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--setting", type=list,
+    parser.add_argument("--setting", type=str,
                         default=[('semantic', 0.01, 30), ('p_interest', 0.01, 10), ('selection', 0.01, 100), ('all', 0.001, 10)],
                         help="the path of the settings in the training process")
     parser.add_argument("--config", type=str,
@@ -48,28 +48,39 @@ def run(settings, config):
     #    model.load_weights(IMAGENET_MODEL_PATH)
     # else:
     #    model.load_weights(RECENT_MODEL_PATH)
-    model.load_part_weights("logs/PFPN_ooi_0034_maskrcnn.pth",mode="instance")
-    model.load_part_weights("logs/CIN_ooi_0009_saliency.pth", mode="p_interest")
+    model.load_from_maskrcnn()
+    # model.load_part_weights("logs/PFPN_ooi_0034_maskrcnn.pth",mode="instance")
+    # model.load_part_weights("logs/CIN_ooi_0009_saliency.pth", mode="p_interest")
+    model.load_weights(config.WEIGHT_PATH)
+    # model.load_weights("logs/CIN_ooi_all.pth")
     dataset_train = OOIDataset("train")
     dataset_val = OOIDataset("val")
 
-    # for item in settings:
-    #     print('Fine tune {} layers'.format(item[0]))
-    #     model.train_model(dataset_train, dataset_val,
-    #                       learning_rate=item[1],
-    #                       epochs=item[2],
-    #                       layers=item[0])
+    for item in settings:
+        print('Fine tune {} layers'.format(item[0]))
+        model.train_model(dataset_train, dataset_val,
+                          learning_rate=item[1],
+                          epochs=item[2],
+                          layers=item[0])
 
-    model.train_model(dataset_train, dataset_val,
-                      learning_rate=config.LEARNING_RATE*10,
-                      epochs=30,
-                      layers='selection')
+    # model.train_model(dataset_train, dataset_val,
+    #                   learning_rate=config.LEARNING_RATE*10,
+    #                   epochs=30,
+    #                   layers='selection')
 
 if __name__=='__main__':
-    settings = [('semantic', 0.01, 30), ('p_interest', 0.01, 10), ('selection', 0.01, 100), ('all', 0.001, 10)]
+    settings = [('semantic', 0.01, 30), ('p_interest', 0.01, 10), ('selection', 0.001, 100)]
     args = get_parser().parse_args()
     if args.setting:
-        settings = args.setting
+        settings_str = args.setting[1:-1]
+        settings_list=settings_str.split("),(")
+        settings_list[0]=settings_list[0][1:]
+        settings_list[-1] = settings_list[-1][:-1]
+        for i in range(len(settings_list)):
+            settings_list[i]=settings_list[i].split(",")
+            settings_list[i][1]=float(settings_list[i][1])
+            settings_list[i][2] = int(settings_list[i][2])
+        settings=settings_list
     if args.config:
         with open(args.config, 'r') as config:
             config_dict = yaml.load(config)
