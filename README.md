@@ -1,8 +1,5 @@
 # Instance of Interest Detection
 
-## Download
-Our code and pre-trained model can be downloaded at http://114.55.28.227:2443/yuf/mm19-yuf-code
-
 ## Requirements
 opencv_python==3.4.3.18  
 numpy==1.16.2  
@@ -22,7 +19,7 @@ The dataset consists of the following sections:
 2. The panoptic segmentation images which can be downloaded at https://drive.google.com/open?id=1nxvSLhNkk7Vc2HEEXquG51tESwEHK07T.
 3. Dataset annotations in json format which can be downloaded at https://drive.google.com/open?id=1dWZZf5PPokmWvAgT0_Cel5QTnocc1T2t.
 
-In order to verify the effectiveness of the method, we compare the results of our method with some of the other methods. The data of the instance extraction experiment can be downloaded at https://drive.google.com/open?id=1wFupKzYt0sabBw_UjMc6AWLDwnbidLsj. And the data of the interest estimation experiment can be downloaded at https://drive.google.com/open?id=1dU_YF6p3cwXR2Kq51O2y-Gft5WiRvKb_.
+In order to verify the effectiveness of the method, we compare the results of our method with some of the other methods. The data of the instance extraction experiment can be downloaded at https://drive.google.com/open?id=1wFupKzYt0sabBw_UjMc6AWLDwnbidLsj. And the data of the interest estimation experiment can be downloaded at <https://drive.google.com/open?id=1dU_YF6p3cwXR2Kq51O2y-Gft5WiRvKb_> .
 ## Quick Start
 To visualize the result of the instance of interest detection, we provide a demo and it can be performed in the following script:
 ```python
@@ -44,3 +41,4 @@ In order to verify the effectiveness of the method, the component_analysis.py fi
 ```python
 python component_analysis.py −−ins_ext <panoptic segmentation path> −−sem_ext <semantic segmentation path> −−p_intr <interest estimation path> −−config <configuration file path>
 ```
+You can download the pretrained model at https://drive.google.com/open?id=1COzdQtxtA0v4bkb6MOuUX7QpbWJPsibm

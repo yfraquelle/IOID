@@ -148,7 +148,7 @@ def run(config):
             step += 1
             gt_list_item = np.array(gt_list_item)
             prediction_list_item = np.array(prediction_list_item)
-            precision, recall, f = compare_mask_wih_a2_and_threshold(gt_list_item, prediction_list_item, config.SELECTION_THRESHOLD)
+            precision, recall, f = compare_mask_wih_a2_and_threshold(gt_list_item, prediction_list_item, config.SELECTION_THRESHOLD+0.05)
             print(step, precision, recall,f)
         except Exception as e:
             print("Error - " + str(step))

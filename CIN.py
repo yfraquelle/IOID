@@ -1315,7 +1315,7 @@ class CIN(nn.Module):
             CIRNN_pred_dict = {}
             prediction_list = maxminnorm(prediction_list)
             for segment_info_id in segments_info:
-                if prediction_list[idx] > self.config.SELECTION_THRESHOLD:
+                if prediction_list[idx] > self.config.SELECTION_THRESHOLD+0.05:
                     CIRNN_pred_dict[segment_info_id] = segments_info[segment_info_id]
                 idx += 1
             return CIRNN_pred_dict
