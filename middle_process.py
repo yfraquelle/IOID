@@ -36,7 +36,7 @@ def extract_json_from_panoptic_semantic(segmentation_model,semantic_model,only_v
                 box=utils.extract_bbox(mask)
                 class_id = np.unique(semantic[segmentation_id == instance_id])[0]
                 category = class_id_dict[str(class_id)]
-                instances[str(instance_id)]={'id':int(instance_id),'class_id':int(class_id),'category_id':category['id'],'category_name':category['name'],'bbox':[int(box[0]),int(box[1]),int(box[2]),int(box[3])]}
+                instances[str(instance_id)]={'id':int(instance_id),'class_id':int(class_id),'category_id':category['category_id'],'category_name':category['name'],'bbox':[int(box[0]),int(box[1]),int(box[2]),int(box[3])]}
             instance_panoptic_all[image_png[:-4].lstrip("0")]=instances
         except Exception as e:
             print(e)

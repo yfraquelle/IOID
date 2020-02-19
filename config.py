@@ -151,7 +151,7 @@ class Config(object):
     # The threshold when selecting IOIs
     SELECTION_THRESHOLD = 0.4
 
-    IMAGE_PATH = "/home/magus/dataset/coco"
+    IMAGE_PATH = "../data/"
 
     JSON_PATH = "data/"
 

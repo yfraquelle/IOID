@@ -322,8 +322,8 @@ class Dataset(TorchDataset):
 
 class BaseDataset(object):
     def __init__(self):
-        self.image_dir = "/home/magus/datasets/coco/train2017"
-        self.annotation_dir = "/home/magus/datasets/coco/annotations/panoptic_train2017"
+        self.image_dir = "../data/ioid_images"
+        self.annotation_dir = "../data/ioid_panoptic"
         # self.interest_label_file = "data/interest_objects_by_image_all.json"
         self.interest_info = dict()
         self.image_ids = []
@@ -394,6 +394,9 @@ class BaseDataset(object):
         image_path = os.path.join(
             self.image_dir, self.image_info[str(image_id)]['image_name'])
         image = skimage.io.imread(image_path)
+        if len(image.shape)==2:
+            image = np.stack([image,image,image],axis=2)
+            print(image.shape)
         # image = Image.open(image_path)
         return image
 
@@ -437,8 +440,8 @@ class OOIDataset(BaseDataset):
             # find the class_id if we know the category_id
             class_id = 0
             for key in self.class_info:
-                if self.class_info[key]['id'] == category_id:
-                    class_id = self.class_info[key]['idx']
+                if self.class_info[key]['category_id'] == category_id:
+                    class_id = self.class_info[key]['class_id']
             # class_id = self.category_info[str(category_id)]['idx']
             id = segment_info['id']
             islabel = segment_info['labeled']

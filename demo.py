@@ -101,7 +101,8 @@ class_names = ['other','person', 'bicycle', 'car', 'motorcycle', 'airplane',
                'rock-merged', 'wall-other-merged', 'rug-merged']
 
 image = skimage.io.imread(image_path)
-
+if len(image.shape) == 2:
+    image = np.stack([image, image, image], axis=2)
 # Run detection
 results = model.detect([image], limit='selection')
 segments_info = results

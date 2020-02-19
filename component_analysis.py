@@ -27,13 +27,13 @@ MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ins_ext", type=str,
-                        default='CIN_panoptic_all',
+                        default='CIN_panoptic_all_old',
                         help="the path of the image to be detected")
     parser.add_argument("--sem_ext", type=str,
-                        default='CIN_semantic_all',
+                        default='CIN_semantic_all_old',
                         help="the path of the image to be detected")
     parser.add_argument("--p_intr_ext", type=str,
-                        default='CIN_saliency_all',
+                        default='CIN_saliency_all_old',
                         help="the path of the image to be detected")
     parser.add_argument("--config", type=str,
                         default="configs/component_analysis_config.yaml",
@@ -51,7 +51,7 @@ class CINConfig(Config):
 
 
 def predict(config, panoptic_model, semantic_model, saliency_model):
-    log_file="logs/CIN_ooi_100_ciedn.pth"
+    log_file="logs/CIN_ooi_100_selection.pth"
     ciedn = CIEDN().cuda()
     state_dict = torch.load(log_file)
     ciedn.load_state_dict(state_dict, strict=False)
@@ -78,7 +78,7 @@ def predict(config, panoptic_model, semantic_model, saliency_model):
             left_pad = (1024 - new_width) // 2
             right_pad = 1024 - new_width - left_pad
 
-            segments_info = image['instances']
+            segments_info = image['segments_info']
 
             labels = []
             boxes = []
@@ -88,10 +88,10 @@ def predict(config, panoptic_model, semantic_model, saliency_model):
                 category_id = segment_info['category_id']
                 class_id = 0
                 for idx in class_dict:
-                    if class_dict[idx]['id'] == category_id:
-                        class_id = class_dict[idx]['idx']
+                    if class_dict[idx]['category_id'] == category_id:
+                        class_id = class_dict[idx]['class_id']
                 islabel = segment_info['labeled']
-                box = [int(segment_info['box'][0]*scale+top_pad),int(segment_info['box'][1]*scale+left_pad),int(segment_info['box'][2]*scale+top_pad),int(segment_info['box'][3]*scale+left_pad)]
+                box = [int(segment_info['bbox'][0]*scale+top_pad),int(segment_info['bbox'][1]*scale+left_pad),int(segment_info['bbox'][2]*scale+top_pad),int(segment_info['bbox'][3]*scale+left_pad)]
                 labels.append(islabel)
                 class_ids.append(class_id)
                 boxes.append(np.array(box))
@@ -153,12 +153,16 @@ def compute_metric(panoptic_model, saliency_model):
     result = {}
     for a2 in np.arange(0.1, 3, 0.1):
         result[str(round(a2, 2))] = {}
-        gt = np.load("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_gt.npy")
-        pred = np.load("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_pred.npy")
+        # gt = np.load("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_gt.npy")
+        # pred = np.load("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_pred.npy")
+        gt = np.load("results/ciedn_result/gt4.npy")
+        pred = np.load("results/ciedn_result/pred4.npy")
         precision,recall,f=compare_mask(gt,pred,a2)
         result[str(round(a2,2))]={"precision":precision,"recall":recall,"f":f}
-    json.dump(result,open("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result.json",'w'))
-    write_csv(['CIN_panoptic_all'],"results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result")
+    # json.dump(result,open("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result.json",'w'))
+    json.dump(result,open("results/ciedn_result/pred4_gt4_result.json",'w'))
+    # write_csv(['CIN_panoptic_all'],"results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result")
+    write_csv(['CIN_panoptic_all'], "results/ciedn_result/pred4_gt4_result")
     # draw_pictures(wait_compares,result,saliency_train_model)
 
 if __name__ == '__main__':

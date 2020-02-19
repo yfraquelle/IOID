@@ -148,7 +148,6 @@ def detection_layer(config, rois, mrcnn_class, mrcnn_bbox, image_meta):
 
     # Currently only supports batchsize 1
     rois = rois.squeeze(0)
-
     _, _, window = parse_image_meta(image_meta)
     window = window[0]
     detections = refine_detections(rois, mrcnn_class, mrcnn_bbox, window, config)

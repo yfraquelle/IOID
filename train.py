@@ -48,8 +48,8 @@ def run(settings, config):
     #    model.load_weights(IMAGENET_MODEL_PATH)
     # else:
     #    model.load_weights(RECENT_MODEL_PATH)
-    model.load_part_weights("logs/PFPN_ooi_0034_maskrcnn.pth",mode="segmentation")
-    model.load_part_weights("logs/CIN_ooi_0009_saliency.pth", mode="saliency")
+    model.load_part_weights("logs/PFPN_ooi_0034_maskrcnn.pth",mode="instance")
+    model.load_part_weights("logs/CIN_ooi_0009_saliency.pth", mode="p_interest")
     dataset_train = OOIDataset("train")
     dataset_val = OOIDataset("val")
 

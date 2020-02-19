@@ -127,5 +127,5 @@ class Semantic(nn.Module):
 
         # 256, 256->256, 128
         s2 = F.relu(self.gn1(self.semantic_branch(p2_out)))
-        return F.upsample(self.conv3(s2 + s3 + s4 + s5), size=(512, 512),mode='bilinear') # 500
+        return F.upsample(self.conv3(s2 + s3 + s4 + s5), size=(500, 500),mode='bilinear') # 500
 

@@ -17,9 +17,8 @@ from collections import defaultdict
 #############################
 # total: 118287
 root_dir = "data"
-data_dir = '/home/magus/datasets/coco/train2017'  # train data
-label_dir = '/home/magus/datasets/coco/annotations/panoptic_train2017'  # train label
-label_colors_file = os.path.join(root_dir, "panoptic_coco_categories.json")  # coco categories
+data_dir = '../data/ioid_images'  # train data
+label_dir = '../data/ioid_panoptic'  # train label
 panoptic_json = '/home/magus/datasets/coco/annotations/panoptic_train2017.json'
 
 # create dir for label index
@@ -93,7 +92,7 @@ def generate_category(segmentation, segments_info, category_dict):
     for segment_info in segments_info:
         segment_id = segment_info['id']
         category_id = segment_info['category_id']
-        class_id = category_dict[str(category_id)]['idx']
+        class_id = category_dict[str(category_id)]['class_id']
         mask = segmentation_id == segment_id
         semantic[mask] = class_id
     return semantic.astype(np.uint8)
@@ -102,12 +101,21 @@ def parse_label(all_img_name):
     cocoPanoptic = CocoPanoptic(panoptic_json)
     # change label to class index
     class_dict = json.load(open("data/class_dict.json",'r'))
-    category_dict = json.load(open("data/category_dict.json",'r'))
-
+    category_dict = {}
+    for class_id in class_dict:
+        category_id = class_dict[class_id]['category_id']
+        category_dict[str(category_id)] = {
+            "class_id": class_dict[class_id]['class_id'],
+            "category_id": class_dict[class_id]['category_id'],
+            "isthing": class_dict[class_id]['isthing'],
+            "name": class_dict[class_id]['name'],
+            "supercategory": class_dict[class_id]['supercategory'],
+            "color": class_dict[class_id]['color']
+        }
     for class_id in class_dict:
         category = class_dict[class_id]
-        class_id=category['idx']
-        category_id=category["id"]
+        class_id=category['class_id']
+        category_id=category["category_id"]
         color = tuple(category['color'])
         color2index[color] = class_id
 
@@ -167,7 +175,7 @@ class IdGenerator():
         category = {}
         for class_id in self.categories:
             item = self.categories[class_id]
-            if str(item['id']) == cat_id:
+            if str(item['category_id']) == cat_id:
                 category = item
         if category['isthing'] == 0:
             return category['color']

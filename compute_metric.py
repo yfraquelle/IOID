@@ -24,7 +24,12 @@ def compare_mask(gt_data,predictions,a2):
         TP_FN[threshold] = np.sum(gt_data)
         precision=TP[threshold]/TP_FP[threshold]
         recall=TP[threshold]/TP_FN[threshold]
-        f=(a2 + 1) * precision * recall / (a2 * precision + recall)
+        # print("precision, recall", precision, recall)
+        # print("=================", a2 * precision + recall)
+        if a2 * precision + recall == 0:
+            f = 0
+        else:
+            f=(a2 + 1) * precision * recall / (a2 * precision + recall)
         precision_dict[str(round(threshold,2))]=round(precision,3)
         recall_dict[str(round(threshold,2))]=round(recall,3)
         f_dict[str(round(threshold,2))]=round(f,3)
