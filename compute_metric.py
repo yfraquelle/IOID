@@ -122,17 +122,17 @@ def write_csv(methods,result_file):
                 header.append(threshold + '-f*')
             writer.writerow(header)
             precision_list = result_a2['precision']
-            recall_list = result_a2['recall']
-            f_list = result_a2['f']
             _r_list = result_a2['_recall']
             _f_list = result_a2['_f']
+            recall_list = result_a2['recall']
+            f_list = result_a2['f']
             result_row = ['CIN']
             for threshold in threshold_list:
                 result_row.append(precision_list[threshold])
-                result_row.append(recall_list[threshold])
-                result_row.append(f_list[threshold])
                 result_row.append(_r_list[threshold])
                 result_row.append(_f_list[threshold])
+                result_row.append(recall_list[threshold])
+                result_row.append(f_list[threshold])
             writer.writerow(result_row)
             # for method in methods:
             #     method=metholistd.split("/")[-1]
