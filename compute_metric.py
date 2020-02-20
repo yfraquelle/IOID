@@ -9,7 +9,7 @@ def maxminnorm(array):
     array=(array-min_value)/(max_value-min_value)
     return array
 
-def compare_mask(gt_data,predictions,a2):
+def compare_mask(gt_data,predictions,a2, base):
     predictions=maxminnorm(predictions)
     TP=dict()
     TP_FP=dict()
@@ -17,6 +17,8 @@ def compare_mask(gt_data,predictions,a2):
     precision_dict=dict()
     recall_dict=dict()
     f_dict=dict()
+    _recall_dict=dict()
+    _f_dict=dict()
     for threshold in np.arange(0.3,0.91,0.05):
         prediction = np.where(predictions>threshold,1,0)
         TP[threshold] = np.sum(np.multiply(prediction, gt_data))
@@ -24,18 +26,20 @@ def compare_mask(gt_data,predictions,a2):
         TP_FN[threshold] = np.sum(gt_data)
         precision=TP[threshold]/TP_FP[threshold]
         recall=TP[threshold]/TP_FN[threshold]
-        # print("precision, recall", precision, recall)
-        # print("=================", a2 * precision + recall)
+        recall_=TP[threshold]/(TP_FN[threshold]+base)
         if a2 * precision + recall == 0:
             f = 0
         else:
             f=(a2 + 1) * precision * recall / (a2 * precision + recall)
+            f_ = (a2 + 1) * precision * recall_ / (a2 * precision + recall_)
         precision_dict[str(round(threshold,2))]=round(precision,3)
         recall_dict[str(round(threshold,2))]=round(recall,3)
         f_dict[str(round(threshold,2))]=round(f,3)
+        _recall_dict[str(round(threshold,2))]=round(recall_,3)
+        _f_dict[str(round(threshold, 2))] = round(f_, 3)
         # print(str(round(threshold,2))+":"+str(round(precision,3))+" "+str(round(recall,3)))
         # print(str(round(f,3)))
-    return precision_dict,recall_dict,f_dict
+    return precision_dict,recall_dict,f_dict, _recall_dict, _f_dict
 
 def compare_mask_wih_a2_and_threshold(gt_data, predictions,threshold):
     a2 = 0.3
@@ -114,15 +118,21 @@ def write_csv(methods,result_file):
                 header.append(threshold + "-p")
                 header.append(threshold + "-r")
                 header.append(threshold + "-f")
+                header.append(threshold + '-r*')
+                header.append(threshold + '-f*')
             writer.writerow(header)
             precision_list = result_a2['precision']
             recall_list = result_a2['recall']
             f_list = result_a2['f']
+            _r_list = result_a2['_recall']
+            _f_list = result_a2['_f']
             result_row = ['CIN']
             for threshold in threshold_list:
                 result_row.append(precision_list[threshold])
                 result_row.append(recall_list[threshold])
                 result_row.append(f_list[threshold])
+                result_row.append(_r_list[threshold])
+                result_row.append(_f_list[threshold])
             writer.writerow(result_row)
             # for method in methods:
             #     method=metholistd.split("/")[-1]

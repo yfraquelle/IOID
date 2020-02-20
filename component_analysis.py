@@ -156,23 +156,33 @@ def predict(config, panoptic_model, semantic_model, saliency_model):
 
 def compute_metric(panoptic_model, saliency_model):
     result = {}
-    for a2 in np.arange(0.1, 3, 0.1):
-        result[str(round(a2, 2))] = {}
-        # gt = np.load("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_gt.npy")
-        # pred = np.load("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_pred.npy")
-        gt = np.load("results/ciedn_result/gt4.npy")
-        pred = np.load("results/ciedn_result/pred4.npy")
-        precision,recall,f=compare_mask(gt,pred,a2)
-        result[str(round(a2,2))]={"precision":precision,"recall":recall,"f":f}
+    a2 = 0.3
+    # for a2 in np.arange(0.1, 3, 0.1):
+    result[str(round(a2, 2))] = {}
+    gt = np.load("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_gt.npy")
+    pred = np.load("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_pred.npy")
+    # gt = np.load("results/ciedn_result/gt.npy")
+    # pred = np.load("results/ciedn_result/pred.npy")
+    gt_to_pred = json.load(open("data/middle/ioi_instance_gt_pred_"+panoptic_model+".json"))
+    base = 0
+    for image_id in gt_to_pred:
+        instance = gt_to_pred[image_id]
+        for instance_id in instance:
+            print(instance[instance_id])
+            if instance[instance_id]['labeled']== True and len(instance[instance_id]['pred']) == 0 :
+                base += 1
+    # print("base", base)
+    precision,recall,f, _recall, _f=compare_mask(gt,pred,a2, base)
+    result[str(round(a2,2))]={"precision":precision,"recall":recall,"f":f, "_recall":_recall, "_f": _f}
     # json.dump(result,open("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result.json",'w'))
-    json.dump(result,open("results/ciedn_result/pred4_gt4_result.json",'w'))
+    json.dump(result,open("results/ciedn_result/pred_gt_result.json",'w'))
     # write_csv(['CIN_panoptic_all'],"results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result")
-    write_csv(['CIN_panoptic_all'], "results/ciedn_result/pred4_gt4_result")
+    write_csv(['CIN_panoptic_all'], "results/ciedn_result/pred_gt_result")
     # draw_pictures(wait_compares,result,saliency_train_model)
 
-def middle_process(segmentation_model, semantic_model, saliency_model):
-    extract_json_from_panoptic_semantic(segmentation_model,semantic_model)
-    map_instance_to_gt(segmentation_model)
+def middle_process(panoptic_model, semantic_model, saliency_model):
+    extract_json_from_panoptic_semantic(panoptic_model,semantic_model)
+    map_instance_to_gt(panoptic_model)
 
 if __name__ == '__main__':
     panoptic_model = ''
@@ -197,6 +207,6 @@ if __name__ == '__main__':
     # saliency_model_list=[saliency_train_model,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency']
     # panoptic_model_list=['deeplab_panoptic','maskrcnn_panoptic']
 
-    middle_process(segmentation_model, semantic_model, saliency_model)
-    predict(config, panoptic_model,semantic_model, saliency_model)
+    # middle_process(segmentation_model, semantic_model, saliency_model)
+    # predict(config, panoptic_model,semantic_model, saliency_model)
     compute_metric(panoptic_model, saliency_model)
