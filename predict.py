@@ -227,13 +227,13 @@ def run(mode, config):
                     img = np.stack([img,img,img],axis=2)
 
                 pred_dict,ioid_result=model.detect([img], limit="selection")
-                scipy.misc.imsave("data/CIEDN_pred/" + image_name.replace(".jpg", ".png"), ioid_result)
+                scipy.misc.imsave("results/CIEDN_pred/" + image_name.replace(".jpg", ".png"), ioid_result)
                 CIEDN_pred_dict[str(image_id)] = pred_dict
                 print("{}/{}".format(count,len(val_images)))
             except Exception as e:
                 print("ERROR: "+image_name)
                 print(e)
-        json.dump(CIEDN_pred_dict, open("data/CIEDN_pred_dict.json", 'w'))
+        json.dump(CIEDN_pred_dict, open("results/CIEDN_pred_dict.json", 'w'))
 
     else:
         pass

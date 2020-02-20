@@ -16,6 +16,13 @@ tensorboardX==2.0
 ```
 mkdir logs
 mkdir models
+mkdir data
+mkdir results
+mkdir ../data
+mkdir data/middle
+mkdir results/CIEDN_pred
+mkdir results/ciedn_result
+mkdir results/validate
 ```
 
 ## Dataset
