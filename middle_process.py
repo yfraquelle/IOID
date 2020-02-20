@@ -105,15 +105,15 @@ def map_instance_to_gt(segmentation_model):
 
 def generate_image_dict(segmentation_model):
     pred_to_gt = json.load(open("data/middle/ioi_instance_pred_gt_" + segmentation_model + ".json", 'r'))
-    all_dict = json.load(open("data/middle/ioi_" + segmentation_model + ".json", 'r'))
-    train_gt_images = json.load(open("data/train_images_dict.json", 'r'))
+    val_dict = json.load(open("data/middle/ioi_" + segmentation_model + ".json", 'r'))
+    # train_gt_images = json.load(open("data/train_images_dict.json", 'r'))
     val_gt_images = json.load(open("data/val_images_dict.json", 'r'))
-    all_gt_images = dict(train_gt_images, **val_gt_images)
+    # val_gt_images = dict(train_gt_images, **val_gt_images)
     ioi_val_images_id = list(val_gt_images.keys())
     ioi_val_images_dict = {}
-    for image_id in all_dict:
-        image_info = all_gt_images[image_id]
-        segments_info = all_dict[image_id]
+    for image_id in val_gt_images:
+        image_info = val_gt_images[image_id]
+        segments_info = val_dict[image_id]
         for instance_id in segments_info:
             if instance_id == "0":
                 pass
