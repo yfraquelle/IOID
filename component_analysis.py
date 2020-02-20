@@ -134,8 +134,12 @@ def predict(config, panoptic_model, semantic_model, saliency_model):
 
             instance_groups = Variable(FloatTensor(instance_groups)).float().cuda().unsqueeze(0)
             boxes = Variable(FloatTensor(boxes)).float().cuda().unsqueeze(0)
-            class_ids = Variable(FloatTensor(class_ids)).float().cuda().unsqueeze(0)
-            predictions = ciedn(instance_groups).squeeze(1).data.cpu().numpy()
+            if config.GPU_COUNT:
+                class_ids = Variable(FloatTensor(class_ids)).float().cuda().unsqueeze(0)
+                predictions = ciedn(instance_groups).squeeze(1).data.cpu().numpy()
+            else:
+                class_ids = Variable(FloatTensor(class_ids)).float().unsqueeze(0)
+                predictions = ciedn(instance_groups).squeeze(1).data.numpy()
 
             num = instance_groups.shape[1]
             for i in range(0, num):

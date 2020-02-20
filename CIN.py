@@ -636,13 +636,22 @@ class CIN(nn.Module):
                                          mrcnn_mask_loss.data.cpu()[0],semantic_loss.data.cpu()[0]), length=10)
 
                     # Statistics
-                    loss_sum += loss.data.cpu()[0]/steps
-                    loss_rpn_class_sum += rpn_class_loss.data.cpu()[0]/steps
-                    loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0]/steps
-                    loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0]/steps
-                    loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0]/steps
-                    loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0]/steps
-                    loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                    if self.config.GPU_COUNT:
+                        loss_sum += loss.data.cpu()[0]/steps
+                        loss_rpn_class_sum += rpn_class_loss.data.cpu()[0]/steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0]/steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0]/steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0]/steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0]/steps
+                        loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                    else:
+                        loss_sum += loss.data[0] / steps
+                        loss_rpn_class_sum += rpn_class_loss.data[0] / steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data[0] / steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data[0] / steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data[0] / steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data[0] / steps
+                        loss_semantic_sum += semantic_loss.data[0] / steps
 
                     # Break after 'steps' steps
                     if step==steps-1:
@@ -666,10 +675,14 @@ class CIN(nn.Module):
                             optimizer.zero_grad()
                         batch_count = 0
 
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),suffix="Complete - influence_loss: {:.5f}".format(influence_loss.data.cpu()[0]), length=10)
-
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),suffix="Complete - influence_loss: {:.5f}".format(influence_loss.data.cpu()[0]), length=10)
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                    else:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),suffix="Complete - influence_loss: {:.5f}".format(influence_loss.data[0]), length=10)
+                        loss_sum += loss.data[0] / steps
+                        loss_influence_sum += influence_loss.data[0] / steps
 
                     # Break after 'steps' steps
                     if step == steps - 1:
@@ -692,12 +705,18 @@ class CIN(nn.Module):
                             optimizer.zero_grad()
                         batch_count = 0
 
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
-                                     suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} ".format(
-                                         loss.data.cpu()[0], semantic_loss.data.cpu()[0]), length=10)
-
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} ".format(
+                                             loss.data.cpu()[0], semantic_loss.data.cpu()[0]), length=10)
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                    else:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} ".format(
+                                             loss.data[0], semantic_loss.data[0]), length=10)
+                        loss_sum += loss.data[0] / steps
+                        loss_semantic_sum += semantic_loss.data[0] / steps
 
                     # Break after 'steps' steps
                     if step == steps - 1:
@@ -721,13 +740,23 @@ class CIN(nn.Module):
                             optimizer.zero_grad()
                         batch_count = 0
 
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
-                                     suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(loss.data.cpu()[0],semantic_loss.data.cpu()[0],influence_loss.data.cpu()[0]),
-                                     length=10)
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(loss.data.cpu()[0],semantic_loss.data.cpu()[0],influence_loss.data.cpu()[0]),
+                                         length=10)
 
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
-                    loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                        loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                    else:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(
+                                             loss.data[0], semantic_loss.data[0],
+                                             influence_loss.data[0]),
+                                         length=10)
+                        loss_sum += loss.data[0] / steps
+                        loss_semantic_sum += semantic_loss.data[0] / steps
+                        loss_influence_sum += influence_loss.data[0] / steps
 
                     # Break after 'steps' steps
                     if step == steps - 1:
@@ -758,21 +787,40 @@ class CIN(nn.Module):
                         batch_count = 0
 
                     # Progress
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
-                                     suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(
-                                         loss.data.cpu()[0], rpn_class_loss.data.cpu()[0], rpn_bbox_loss.data.cpu()[0],
-                                         mrcnn_class_loss.data.cpu()[0], mrcnn_bbox_loss.data.cpu()[0],
-                                         mrcnn_mask_loss.data.cpu()[0], semantic_loss.data.cpu()[0],influence_loss.data.cpu()[0]), length=10)
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(
+                                             loss.data.cpu()[0], rpn_class_loss.data.cpu()[0], rpn_bbox_loss.data.cpu()[0],
+                                             mrcnn_class_loss.data.cpu()[0], mrcnn_bbox_loss.data.cpu()[0],
+                                             mrcnn_mask_loss.data.cpu()[0], semantic_loss.data.cpu()[0],influence_loss.data.cpu()[0]), length=10)
 
-                    # Statistics
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_rpn_class_sum += rpn_class_loss.data.cpu()[0] / steps
-                    loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0] / steps
-                    loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0] / steps
-                    loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0] / steps
-                    loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0] / steps
-                    loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
-                    loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                        # Statistics
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_rpn_class_sum += rpn_class_loss.data.cpu()[0] / steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0] / steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0] / steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0] / steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0] / steps
+                        loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                        loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                    else:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(
+                                             loss.data[0], rpn_class_loss.data[0],
+                                             rpn_bbox_loss.data[0],
+                                             mrcnn_class_loss.data[0], mrcnn_bbox_loss.data[0],
+                                             mrcnn_mask_loss.data[0], semantic_loss.data[0],
+                                             influence_loss.data[0]), length=10)
+
+                        # Statistics
+                        loss_sum += loss.data[0] / steps
+                        loss_rpn_class_sum += rpn_class_loss.data[0] / steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data[0] / steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data[0] / steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data[0] / steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data[0] / steps
+                        loss_semantic_sum += semantic_loss.data[0] / steps
+                        loss_influence_sum += influence_loss.data[0] / steps
 
                     # Break after 'steps' steps
                     if step == steps - 1:
@@ -797,12 +845,20 @@ class CIN(nn.Module):
                             optimizer.zero_grad()
                         batch_count = 0
 
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
-                                     suffix="Complete - interest_loss: {:.5f}".format(interest_loss.data.cpu()[0]),
-                                     length=10)
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - interest_loss: {:.5f}".format(interest_loss.data.cpu()[0]),
+                                         length=10)
 
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_interest_sum += interest_loss.data.cpu()[0] / steps
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_interest_sum += interest_loss.data.cpu()[0] / steps
+                    else:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - interest_loss: {:.5f}".format(interest_loss.data[0]),
+                                         length=10)
+
+                        loss_sum += loss.data[0] / steps
+                        loss_interest_sum += interest_loss.data[0] / steps
 
                     # Break after 'steps' steps
                     if step == steps - 1:
@@ -844,24 +900,42 @@ class CIN(nn.Module):
                         batch_count = 0
 
                     # Progress
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f} - interest_loss: {:.5f}".format(
+                                             loss.data.cpu()[0], rpn_class_loss.data.cpu()[0], rpn_bbox_loss.data.cpu()[0],
+                                             mrcnn_class_loss.data.cpu()[0], mrcnn_bbox_loss.data.cpu()[0],
+                                             mrcnn_mask_loss.data.cpu()[0], semantic_loss.data.cpu()[0],
+                                             influence_loss.data.cpu()[0],interest_loss.data.cpu()[0]), length=10)
+
+                        # Statistics
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_rpn_class_sum += rpn_class_loss.data.cpu()[0] / steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0] / steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0] / steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0] / steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0] / steps
+                        loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                        loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                        loss_interest_sum += interest_loss.data.cpu()[0] / steps
+                else:
                     printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
                                      suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f} - interest_loss: {:.5f}".format(
-                                         loss.data.cpu()[0], rpn_class_loss.data.cpu()[0], rpn_bbox_loss.data.cpu()[0],
-                                         mrcnn_class_loss.data.cpu()[0], mrcnn_bbox_loss.data.cpu()[0],
-                                         mrcnn_mask_loss.data.cpu()[0], semantic_loss.data.cpu()[0],
-                                         influence_loss.data.cpu()[0],interest_loss.data.cpu()[0]), length=10)
+                                         loss.data[0], rpn_class_loss.data[0], rpn_bbox_loss.data[0],
+                                         mrcnn_class_loss.data[0], mrcnn_bbox_loss.data[0],
+                                         mrcnn_mask_loss.data[0], semantic_loss.data[0],
+                                         influence_loss.data[0], interest_loss.data[0]), length=10)
 
                     # Statistics
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_rpn_class_sum += rpn_class_loss.data.cpu()[0] / steps
-                    loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0] / steps
-                    loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0] / steps
-                    loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0] / steps
-                    loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0] / steps
-                    loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
-                    loss_influence_sum += influence_loss.data.cpu()[0] / steps
-                    loss_interest_sum += interest_loss.data.cpu()[0] / steps
-
+                    loss_sum += loss.data[0] / steps
+                    loss_rpn_class_sum += rpn_class_loss.data[0] / steps
+                    loss_rpn_bbox_sum += rpn_bbox_loss.data[0] / steps
+                    loss_mrcnn_class_sum += mrcnn_class_loss.data[0] / steps
+                    loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data[0] / steps
+                    loss_mrcnn_mask_sum += mrcnn_mask_loss.data[0] / steps
+                    loss_semantic_sum += semantic_loss.data[0] / steps
+                    loss_influence_sum += influence_loss.data[0] / steps
+                    loss_interest_sum += interest_loss.data[0] / steps
                     # Break after 'steps' steps
                     if step == steps - 1:
                         return loss_sum, loss_rpn_class_sum, loss_rpn_bbox_sum, loss_mrcnn_class_sum, loss_mrcnn_bbox_sum, loss_mrcnn_mask_sum, loss_semantic_sum, loss_influence_sum, loss_interest_sum
@@ -960,20 +1034,37 @@ class CIN(nn.Module):
                     loss = rpn_class_loss + rpn_bbox_loss + mrcnn_class_loss + mrcnn_bbox_loss + mrcnn_mask_loss + semantic_loss
 
                     # Progress
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
-                                     suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f}".format(
-                                         loss.data.cpu()[0], rpn_class_loss.data.cpu()[0], rpn_bbox_loss.data.cpu()[0],
-                                         mrcnn_class_loss.data.cpu()[0], mrcnn_bbox_loss.data.cpu()[0],
-                                         mrcnn_mask_loss.data.cpu()[0], semantic_loss.data.cpu()[0], length=10))
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f}".format(
+                                             loss.data.cpu()[0], rpn_class_loss.data.cpu()[0], rpn_bbox_loss.data.cpu()[0],
+                                             mrcnn_class_loss.data.cpu()[0], mrcnn_bbox_loss.data.cpu()[0],
+                                             mrcnn_mask_loss.data.cpu()[0], semantic_loss.data.cpu()[0], length=10))
 
-                    # Statistics
-                    loss_sum += loss.data.cpu()[0]/steps
-                    loss_rpn_class_sum += rpn_class_loss.data.cpu()[0]/steps
-                    loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0]/steps
-                    loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0]/steps
-                    loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0]/steps
-                    loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0]/steps
-                    loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                        # Statistics
+                        loss_sum += loss.data.cpu()[0]/steps
+                        loss_rpn_class_sum += rpn_class_loss.data.cpu()[0]/steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0]/steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0]/steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0]/steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0]/steps
+                        loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                    else:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f}".format(
+                                             loss.data[0], rpn_class_loss.data[0],
+                                             rpn_bbox_loss.data[0],
+                                             mrcnn_class_loss.data[0], mrcnn_bbox_loss.data[0],
+                                             mrcnn_mask_loss.data[0], semantic_loss.data[0], length=10))
+
+                        # Statistics
+                        loss_sum += loss.data[0] / steps
+                        loss_rpn_class_sum += rpn_class_loss.data[0] / steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data[0] / steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data[0] / steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data[0] / steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data[0] / steps
+                        loss_semantic_sum += semantic_loss.data[0] / steps
 
                     # Break after 'steps' steps
                     if step==steps-1:
@@ -989,12 +1080,21 @@ class CIN(nn.Module):
                     influence_loss = compute_saliency_loss(influence_preds, gt_influence_map)
                     loss = influence_loss
 
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
-                                     suffix="Complete - influence_loss: {:.5f}".format(influence_loss.data.cpu()[0]),
-                                     length=10)
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - influence_loss: {:.5f}".format(influence_loss.data.cpu()[0]),
+                                         length=10)
 
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                    else:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - influence_loss: {:.5f}".format(
+                                             influence_loss.data[0]),
+                                         length=10)
+
+                        loss_sum += loss.data[0] / steps
+                        loss_influence_sum += influence_loss.data[0] / steps
 
                     # Break after 'steps' steps
                     if step == steps - 1:
@@ -1008,11 +1108,19 @@ class CIN(nn.Module):
                     semantic_loss = compute_semantic_loss(semantic_label, gt_semantic_label)
                     loss = semantic_loss
 
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
-                                     suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} ".format(loss.data.cpu()[0], semantic_loss.data.cpu()[0]),length=10)
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} ".format(loss.data.cpu()[0], semantic_loss.data.cpu()[0]),length=10)
 
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                    else:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} ".format(
+                                             loss.data[0], semantic_loss.data[0]), length=10)
+
+                        loss_sum += loss.data[0] / steps
+                        loss_semantic_sum += semantic_loss.data[0] / steps
 
                     # Break after 'steps' steps
                     if step == steps - 1:
@@ -1028,14 +1136,25 @@ class CIN(nn.Module):
                     semantic_loss = compute_semantic_loss(semantic_label, gt_semantic_label)
                     loss = influence_loss + semantic_loss
 
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
-                                     suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(
-                                         loss.data.cpu()[0], semantic_loss.data.cpu()[0], influence_loss.data.cpu()[0]),
-                                     length=10)
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(
+                                             loss.data.cpu()[0], semantic_loss.data.cpu()[0], influence_loss.data.cpu()[0]),
+                                         length=10)
 
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
-                    loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                        loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                    else:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(
+                                             loss.data[0], semantic_loss.data[0],
+                                             influence_loss.data[0]),
+                                         length=10)
+
+                        loss_sum += loss.data[0] / steps
+                        loss_semantic_sum += semantic_loss.data[0] / steps
+                        loss_influence_sum += influence_loss.data[0] / steps
 
                     # Break after 'steps' steps
                     if step == steps - 1:
@@ -1059,21 +1178,40 @@ class CIN(nn.Module):
                     loss = rpn_class_loss + rpn_bbox_loss + mrcnn_class_loss + mrcnn_bbox_loss + mrcnn_mask_loss + semantic_loss + influence_loss
 
                     # Progress
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
-                                     suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(
-                                         loss.data.cpu()[0], rpn_class_loss.data.cpu()[0], rpn_bbox_loss.data.cpu()[0],
-                                         mrcnn_class_loss.data.cpu()[0], mrcnn_bbox_loss.data.cpu()[0],
-                                         mrcnn_mask_loss.data.cpu()[0], semantic_loss.data.cpu()[0],influence_loss.data.cpu()[0], length=10))
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(
+                                             loss.data.cpu()[0], rpn_class_loss.data.cpu()[0], rpn_bbox_loss.data.cpu()[0],
+                                             mrcnn_class_loss.data.cpu()[0], mrcnn_bbox_loss.data.cpu()[0],
+                                             mrcnn_mask_loss.data.cpu()[0], semantic_loss.data.cpu()[0],influence_loss.data.cpu()[0], length=10))
 
-                    # Statistics
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_rpn_class_sum += rpn_class_loss.data.cpu()[0] / steps
-                    loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0] / steps
-                    loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0] / steps
-                    loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0] / steps
-                    loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0] / steps
-                    loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
-                    loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                        # Statistics
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_rpn_class_sum += rpn_class_loss.data.cpu()[0] / steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0] / steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0] / steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0] / steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0] / steps
+                        loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                        loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                    else:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f}".format(
+                                             loss.data[0], rpn_class_loss.data[0],
+                                             rpn_bbox_loss.data[0],
+                                             mrcnn_class_loss.data[0], mrcnn_bbox_loss.data[0],
+                                             mrcnn_mask_loss.data[0], semantic_loss.data[0],
+                                             influence_loss.data[0], length=10))
+
+                        # Statistics
+                        loss_sum += loss.data[0] / steps
+                        loss_rpn_class_sum += rpn_class_loss.data[0] / steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data[0] / steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data[0] / steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data[0] / steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data[0] / steps
+                        loss_semantic_sum += semantic_loss.data[0] / steps
+                        loss_influence_sum += influence_loss.data[0] / steps
 
                     # Break after 'steps' steps
                     if step == steps - 1:
@@ -1088,13 +1226,20 @@ class CIN(nn.Module):
                     interest_loss = loss_func(predictions, pair_labels)
                     loss = interest_loss
 
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
-                                     suffix="Complete - interest_loss: {:.5f}".format(interest_loss.data.cpu()[0]),
-                                     length=10)
+                    if self.config.GPU_COUNT:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - interest_loss: {:.5f}".format(interest_loss.data.cpu()[0]),
+                                         length=10)
 
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_interest_sum += interest_loss.data.cpu()[0] / steps
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_interest_sum += interest_loss.data.cpu()[0] / steps
+                    else:
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - interest_loss: {:.5f}".format(interest_loss.data[0]),
+                                         length=10)
 
+                        loss_sum += loss.data[0] / steps
+                        loss_interest_sum += interest_loss.data[0] / steps
                     # Break after 'steps' steps
                     if step == steps - 1:
                         return loss_sum, loss_interest_sum
@@ -1123,15 +1268,27 @@ class CIN(nn.Module):
                     loss = rpn_class_loss + rpn_bbox_loss + mrcnn_class_loss + mrcnn_bbox_loss + mrcnn_mask_loss + semantic_loss + influence_loss + interest_loss
 
                     # Statistics
-                    loss_sum += loss.data.cpu()[0] / steps
-                    loss_rpn_class_sum += rpn_class_loss.data.cpu()[0] / steps
-                    loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0] / steps
-                    loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0] / steps
-                    loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0] / steps
-                    loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0] / steps
-                    loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
-                    loss_influence_sum += influence_loss.data.cpu()[0] / steps
-                    loss_interest_sum += interest_loss.data.cpu()[0] / steps
+                    if self.config.GPU_COUNT:
+                        loss_sum += loss.data.cpu()[0] / steps
+                        loss_rpn_class_sum += rpn_class_loss.data.cpu()[0] / steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data.cpu()[0] / steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data.cpu()[0] / steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data.cpu()[0] / steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data.cpu()[0] / steps
+                        loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
+                        loss_influence_sum += influence_loss.data.cpu()[0] / steps
+                        loss_interest_sum += interest_loss.data.cpu()[0] / steps
+                    else:
+                        loss_sum += loss.data[0] / steps
+                        loss_rpn_class_sum += rpn_class_loss.data[0] / steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data[0] / steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data[0] / steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data[0] / steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data[0] / steps
+                        loss_semantic_sum += semantic_loss.data[0] / steps
+                        loss_influence_sum += influence_loss.data[0] / steps
+                        loss_interest_sum += interest_loss.data[0] / steps
+
 
                     # Break after 'steps' steps
                     if step == steps - 1:
@@ -1177,12 +1334,14 @@ class CIN(nn.Module):
 
             if self.config.GPU_COUNT:
                 image_metas = image_metas.int().data.cpu().numpy()
+                influence_map = influence_map.squeeze(0).squeeze(0).data.cpu().numpy()
             else:
                 image_metas = image_metas.int().data.numpy()
+                influence_map = influence_map.squeeze(0).squeeze(0).data.numpy()
             image_id, image_shape, window = image_metas[0][0], image_metas[0][1:4], image_metas[0][4:8]
             top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
 
-            influence_map=influence_map.squeeze(0).squeeze(0).data.cpu().numpy()
+            # influence_map=influence_map.squeeze(0).squeeze(0).data.cpu().numpy()
             influence_map = resize_influence_map(influence_map,(self.config.IMAGE_SIZE,self.config.IMAGE_SIZE))
             influence_map = influence_map[top_pad:top_pad_h, left_pad:left_pad_w]
             influence_map = scipy.misc.imresize(influence_map, image_shape[:2], interp='bilinear')
@@ -1190,7 +1349,7 @@ class CIN(nn.Module):
         elif limit == "instance":
             thing_detections, thing_masks, semantic_labels = self.predict_front(
                 [molded_images, image_metas], mode='inference',limit="instance") # [x,5],[x,28,28,81]
-            semantic_segment, stuff_detections, stuff_masks = generate_stuff(semantic_labels)  # [y, 5],[y, 500, 500]
+            semantic_segment, stuff_detections, stuff_masks = generate_stuff(self.config, semantic_labels)  # [y, 5],[y, 500, 500]
 
             if self.config.GPU_COUNT:
                 image_metas = image_metas.int().data.cpu().numpy()
@@ -1202,13 +1361,19 @@ class CIN(nn.Module):
             results = []
             # image=images[0]
             if len(thing_detections.shape) > 1 and len(stuff_detections.shape)>1:
-                thing_detections = thing_detections.data.cpu().numpy()
-                thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+                if self.config.GPU_COUNT:
+                    thing_detections = thing_detections.data.cpu().numpy()
+                    thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+                    stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
+                    stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+                else:
+                    thing_detections = thing_detections.data.numpy()
+                    thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.numpy()
+                    stuff_detections = stuff_detections.data.numpy()  # [y,5]
+                    stuff_masks = stuff_masks.data.numpy()  # [y,500,500]
+
                 thing_detections = thing_detections.squeeze(0)  # [x,6]
                 thing_masks = thing_masks.squeeze(0)  # [x,28,28,81]
-                stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
-                stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
-
                 semantic_segment = resize_semantic_label(semantic_segment,(self.config.IMAGE_SIZE,self.config.IMAGE_SIZE))
                 semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
                 semantic_segment = scipy.ndimage.zoom(semantic_segment, [image_shape[0]/(top_pad_h-top_pad),image_shape[1]/(left_pad_w-left_pad)] , mode='nearest', order=0)
@@ -1226,9 +1391,13 @@ class CIN(nn.Module):
                     "stuff_masks": stuff_masks_unmold,
                     "semantic_segment": semantic_segment
                 })
-            elif len(thing_detections.shape) == 1 and len(stuff_detections.shape) > 1:
-                stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
-                stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+            elif len(thing_detections.shape) == 1 and len(stuff_detections.shape) > 1 and self.config.GPU_COUNT:
+                if self.config.GPU_COUNT:
+                    stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
+                    stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+                else:
+                    stuff_detections = stuff_detections.data.numpy()  # [y,5]
+                    stuff_masks = stuff_masks.data.numpy()  # [y,500,500]
 
                 semantic_segment = resize_semantic_label(semantic_segment,
                                                          (self.config.IMAGE_SIZE, self.config.IMAGE_SIZE))
@@ -1247,8 +1416,12 @@ class CIN(nn.Module):
                     "semantic_segment": semantic_segment
                 })
             elif len(thing_detections.shape) > 1 and len(stuff_detections.shape)==1:
-                thing_detections = thing_detections.data.cpu().numpy()
-                thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+                if self.config.GPU_COUNT:
+                    thing_detections = thing_detections.data.cpu().numpy()
+                    thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+                else:
+                    thing_detections = thing_detections.data.numpy()
+                    thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.numpy()
                 thing_detections = thing_detections.squeeze(0)  # [x,6]
                 thing_masks = thing_masks.squeeze(0)  # [x,28,28,81]
 
@@ -1272,7 +1445,7 @@ class CIN(nn.Module):
             return results
         elif limit == "insttr":
             thing_detections, thing_masks, semantic_labels,influence_map = self.predict_front([molded_images, image_metas], mode='inference',limit=limit) # [x,5],[x,28,28,81]
-            semantic_segment, stuff_detections, stuff_masks = generate_stuff(semantic_labels)  # [y, 5],[y, 500, 500] [1, 134, 512, 512]
+            semantic_segment, stuff_detections, stuff_masks = generate_stuff(self.config, semantic_labels)  # [y, 5],[y, 500, 500] [1, 134, 512, 512]
 
             if self.config.GPU_COUNT:
                 image_metas = image_metas.int().data.cpu().numpy()
@@ -1281,7 +1454,10 @@ class CIN(nn.Module):
             image_id, image_shape, window = image_metas[0][0], image_metas[0][1:4], image_metas[0][4:8]
             top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
 
-            influence_map = influence_map.squeeze(0).squeeze(0).data.cpu().numpy()  # [128,128]
+            if self.config.GPU_COUNT:
+                influence_map = influence_map.squeeze(0).squeeze(0).data.cpu().numpy()  # [128,128]
+            else:
+                influence_map = influence_map.squeeze(0).squeeze(0).data.numpy()  # [128,128]
 
             influence_map = resize_influence_map(influence_map,(self.config.IMAGE_SIZE,self.config.IMAGE_SIZE))
             influence_map = influence_map[top_pad:top_pad_h, left_pad:left_pad_w]
@@ -1289,12 +1465,19 @@ class CIN(nn.Module):
 
             results = []
             if len(thing_detections.shape) > 1 and len(stuff_detections.shape)>1:
-                thing_detections = thing_detections.data.cpu().numpy()
-                thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+                if self.config.GPU_COUNT:
+                    thing_detections = thing_detections.data.cpu().numpy()
+                    thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+                    stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
+                    stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+                else:
+                    thing_detections = thing_detections.data.numpy()
+                    thing_masks = thing_masks.permute(0, 1, 3, 4, 2).cpu().numpy()
+                    stuff_detections = stuff_detections.data.numpy()  # [y,5]
+                    stuff_masks = stuff_masks.data.numpy()  # [y,500,500]
+
                 thing_detections = thing_detections.squeeze(0)  # [x,6]
                 thing_masks = thing_masks.squeeze(0)  # [x,28,28,81]
-                stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
-                stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
 
                 semantic_segment = resize_semantic_label(semantic_segment,(self.config.IMAGE_SIZE,self.config.IMAGE_SIZE))
                 semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
@@ -1315,8 +1498,12 @@ class CIN(nn.Module):
                     'influence_map': influence_map
                 })
             elif len(thing_detections.shape) == 1 and len(stuff_detections.shape)>1:
-                stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
-                stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+                if self.config.GPU_COUNT:
+                    stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
+                    stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+                else:
+                    stuff_detections = stuff_detections.data.numpy()  # [y,5]
+                    stuff_masks = stuff_masks.data.numpy()  # [y,500,500]
 
                 semantic_segment = resize_semantic_label(semantic_segment,(self.config.IMAGE_SIZE, self.config.IMAGE_SIZE))
                 semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
@@ -1332,8 +1519,12 @@ class CIN(nn.Module):
                     'influence_map': influence_map
                 })
             elif len(thing_detections.shape) > 1 and len(stuff_detections.shape)==1:
-                thing_detections = thing_detections.data.cpu().numpy()
-                thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+                if self.config.GPU_COUNT:
+                    thing_detections = thing_detections.data.cpu().numpy()
+                    thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+                else:
+                    thing_detections = thing_detections.data.cpu().numpy()
+                    thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
                 thing_detections = thing_detections.squeeze(0)  # [x,6]
                 thing_masks = thing_masks.squeeze(0)  # [x,28,28,81]
 
@@ -1369,7 +1560,6 @@ class CIN(nn.Module):
 
             num = len(segments_info)  # the num of the instances
             prediction_list = []
-            # predictions = predictions.cpu().detach().numpy()
             for i in range(0, num):
                 avg = np.sum(predictions[i * num:(i + 1) * num]) / num
                 prediction_list.append(avg)
@@ -1747,8 +1937,10 @@ class CIN(nn.Module):
                                                          mode)
                 if self.config.GPU_COUNT:
                     instance_groups = Variable(torch.unsqueeze(torch.from_numpy(instance_groups), 0)).float().cuda() # 1,19,2,56,56
-
-                predictions = self.ciedn(instance_groups).squeeze(1).data.cpu().numpy()
+                    predictions = self.ciedn(instance_groups).squeeze(1).data.cpu().numpy()
+                else:
+                    instance_groups = Variable(torch.unsqueeze(torch.from_numpy(instance_groups), 0)).float()  # 1,19,2,56,56
+                    predictions = self.ciedn(instance_groups).squeeze(1).data.numpy()
                 return predictions, segments_info, panoptic_result
 
     def predict_back(self,image_metas,thing_detections,thing_masks,semantic_segment,influence_map):
@@ -1757,20 +1949,26 @@ class CIN(nn.Module):
         plt.imshow(img)
         plt.show()
 
-        semantic_segment, stuff_detections, stuff_masks = generate_stuff(semantic_segment)  # [y, 5],[y, 500, 500]
+        semantic_segment, stuff_detections, stuff_masks = generate_stuff(self.config, semantic_segment)  # [y, 5],[y, 500, 500]
         # semantic_segment = self.expand_semantic_predict(semantic_segment, image_metas)
 
         if self.config.GPU_COUNT:
             stuff_detections = stuff_detections.cuda()
             stuff_masks = stuff_masks.cuda()
+            thing_detections = thing_detections.data.cpu().numpy()
+            thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+            stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
+            stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+            influence_map = influence_map.squeeze(0).squeeze(0).data.cpu().numpy()  # [128,128]
+        else:
+            thing_detections = thing_detections.data.numpy()
+            thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.numpy()
+            stuff_detections = stuff_detections.data.numpy()  # [y,5]
+            stuff_masks = stuff_masks.data.numpy()  # [y,500,500]
+            influence_map = influence_map.squeeze(0).squeeze(0).data.numpy()  # [128,128]
 
-        thing_detections = thing_detections.data.cpu().numpy()
-        thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
         thing_detections = thing_detections.squeeze(0)  # [x,6]
         thing_masks = thing_masks.squeeze(0)  # [x,28,28,81]
-        stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
-        stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
-        influence_map = influence_map.squeeze(0).squeeze(0).data.cpu().numpy()  # [128,128]
 
         instance_piece_groups, instance_class_ids, instance_boxes, instance_masks = extract_piece_group(thing_detections,
                                                                                                  thing_masks,
@@ -1902,23 +2100,31 @@ class CIN(nn.Module):
         return semantic_segment
 
     def detect_objects(self, thing_detections, thing_masks, semantic_segment, influence_map, image_metas):
-        semantic_segment, stuff_detections, stuff_masks = generate_stuff(semantic_segment)  # [y, 5],[y, 500, 500] [1, 134, 512, 512]
+        semantic_segment, stuff_detections, stuff_masks = generate_stuff(self.config, semantic_segment)  # [y, 5],[y, 500, 500] [1, 134, 512, 512]
         # plt.figure()
         # plt.imshow(semantic_segment)
         # plt.show()
-        influence_map = influence_map.squeeze(0).squeeze(0).data.cpu().numpy()  # [128,128]
+        if self.config.GPU_COUNT:
+            influence_map = influence_map.squeeze(0).squeeze(0).data.cpu().numpy()  # [128,128]
+        else:
+            influence_map = influence_map.squeeze(0).squeeze(0).data.numpy()  # [128,128]
 
         image_id, image_shape, window = image_metas[0][0], image_metas[0][1:4], image_metas[0][4:8]
 
         results = []
-        if len(thing_detections.shape) > 1 and len(stuff_detections.shape) > 1:
-            thing_detections = thing_detections.data.cpu().numpy()
-            thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+        if len(thing_detections.shape) > 1 and len(stuff_detections.shape) > 1 and self.config.GPU_COUNT:
+            if self.config.GPU_COUNT:
+                thing_detections = thing_detections.data.cpu().numpy()
+                thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+                stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
+                stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+            else:
+                thing_detections = thing_detections.data.numpy()
+                thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.numpy()
+                stuff_detections = stuff_detections.data.numpy()  # [y,5]
+                stuff_masks = stuff_masks.data.numpy()  # [y,500,500]
             thing_detections = thing_detections.squeeze(0)  # [x,6]
             thing_masks = thing_masks.squeeze(0)  # [x,28,28,81]
-            stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
-            stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
-
             top_pad, left_pad, top_pad_h, left_pad_w = window[0], window[1], window[2], window[3]
             semantic_segment = resize_semantic_label(semantic_segment, (self.config.IMAGE_SIZE, self.config.IMAGE_SIZE))
             semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
@@ -1943,9 +2149,13 @@ class CIN(nn.Module):
                 "semantic_segment": semantic_segment,
                 'influence_map': influence_map
             })
-        elif len(thing_detections.shape) == 1 and len(stuff_detections.shape) > 1:
-            stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
-            stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+        elif len(thing_detections.shape) == 1 and len(stuff_detections.shape) > 1 and self.config.GPU_COUNT:
+            if self.config.GPU_COUNT:
+                stuff_detections = stuff_detections.data.cpu().numpy()  # [y,5]
+                stuff_masks = stuff_masks.data.cpu().numpy()  # [y,500,500]
+            else:
+                stuff_detections = stuff_detections.data.numpy()  # [y,5]
+                stuff_masks = stuff_masks.data.numpy()  # [y,500,500]
 
             semantic_segment = resize_semantic_label(semantic_segment, (self.config.IMAGE_SIZE, self.config.IMAGE_SIZE))
             semantic_segment = semantic_segment[top_pad:top_pad_h, left_pad:left_pad_w]
@@ -1963,9 +2173,13 @@ class CIN(nn.Module):
                 "semantic_segment": semantic_segment,
                 'influence_map': influence_map
             })
-        elif len(thing_detections.shape) > 1 and len(stuff_detections.shape) == 1:
-            thing_detections = thing_detections.data.cpu().numpy()
-            thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+        elif len(thing_detections.shape) > 1 and len(stuff_detections.shape) == 1 and self.config.GPU_COUNT:
+            if self.config.GPU_COUNT:
+                thing_detections = thing_detections.data.cpu().numpy()
+                thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.cpu().numpy()
+            else:
+                thing_detections = thing_detections.data.numpy()
+                thing_masks = thing_masks.permute(0, 1, 3, 4, 2).data.numpy()
             thing_detections = thing_detections.squeeze(0)  # [x,6]
             thing_masks = thing_masks.squeeze(0)  # [x,28,28,81]
 
@@ -2000,10 +2214,10 @@ class CIN(nn.Module):
         semantic_labels=result['semantic_segment'] # CIN_semantic_all中的一张图片
         influence_map=result['influence_map'] # CIN_saliency_all中的一张图片
 
-        if type(image_metas) is np.ndarray:
-            image_shape = image_metas[0][1:4].astype('int32')
-        else:
+        if self.config.GPU_COUNT:
             image_shape = image_metas[0][1:4].cpu().numpy().astype('int32')
+        else:
+            image_shape = image_metas[0][1:4].astype('int32')
         panoptic_result=np.zeros(image_shape)
         semantic_result = np.zeros(image_shape)
 
@@ -2149,8 +2363,10 @@ class CIN(nn.Module):
         for instance_id in instance_dict:
             mask = segmentation_id == int(instance_id)
             instance_dict[instance_id]['mask'] = mask
-
-        gt_segmentation = gt_segmentation.squeeze(0).data.cpu().numpy()
+        if self.config.GPU_COUNT:
+            gt_segmentation = gt_segmentation.squeeze(0).data.cpu().numpy()
+        else:
+            gt_segmentation = gt_segmentation.squeeze(0).data.numpy()
         gt_segmentation_id = utils.rgb2id(gt_segmentation)
 
         for gt_instance_id in gt_instance_dict:

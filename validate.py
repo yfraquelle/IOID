@@ -132,8 +132,12 @@ def run(config):
                 param[1].requires_grad=False
                 # print(param[0] + " " + str(param[1].shape) + " " + str(param[1].requires_grad))
             predictions, pair_label, labels = model.predict_front(predict_input, mode="training", limit="selection")
-            predictions = predictions.data.cpu().numpy()
-            labels = labels.data.cpu().numpy().squeeze(0)
+            if self.config.GPU_COUNT:
+                predictions = predictions.data.cpu().numpy()
+                labels = labels.data.cpu().numpy().squeeze(0)
+            else:
+                predictions = predictions.data.numpy()
+                labels = labels.data.numpy().squeeze(0)
             num = len(labels)
             gt_list_item = []
             prediction_list_item = []
@@ -156,7 +160,7 @@ def run(config):
 
     predition_list = np.array(prediction_list)
     gt_list = np.array(gt_list)
-    np.save("results/ciedn_result/gt.npy", gt_list)
+    np.save("results/validate/gt.npy", gt_list)
     np.save("results/validate/pred.npy", prediction_list)
 
 if __name__=='__main__':

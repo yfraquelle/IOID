@@ -8,22 +8,11 @@ from nms.nms_wrapper import nms
 from utils.pytorch_utils import unique1d,intersect1d
 from utils.formatting_utils import parse_image_meta
 from utils.utils import extract_bboxes
-from config import Config
 
 
 ############################################################
 #  Detection Layer
 ############################################################
-
-class CINConfig(Config):
-    NAME = "ooi"
-    GPU_COUNT = 1
-    IMAGES_PER_GPU = 1 #10
-    NUM_CLASSES = 1+133
-    THING_NUM_CLASSES = 1+80
-    STUFF_NUM_CLASSES = 1+53
-
-config = CINConfig()
 
 def clip_to_window(window, boxes):
     """
@@ -155,10 +144,14 @@ def detection_layer(config, rois, mrcnn_class, mrcnn_bbox, image_meta):
     return detections
 
 
-def generate_stuff(semantic_segmentation):
+def generate_stuff(config, semantic_segmentation):
     # [batch, num_detections, (y1, x1, y2, x2)]
     # [batch, num_detections, h, w]
-    segments = semantic_segmentation.squeeze(0).data.cpu().numpy()
+    if config.GPU_COUNT:
+        segments = semantic_segmentation.squeeze(0).data.cpu().numpy()
+    else:
+        segments = semantic_segmentation.squeeze(0).data.numpy()
+
     pred = np.argmax(segments, axis=0)
 
     results=[]
