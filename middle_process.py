@@ -20,7 +20,6 @@ def extract_json_from_panoptic_semantic(segmentation_model,semantic_model):
     count=0
     for image_png in images_png:
         count+=1
-        print("extract_json_from_panoptic_semantic:"+str(count)+"/"+str(len(images_png)))
         try:
             semantic = skimage.io.imread("../"+semantic_model+"/"+image_png)
             panoptic = skimage.io.imread("../"+segmentation_model+"/"+image_png)
@@ -36,7 +35,9 @@ def extract_json_from_panoptic_semantic(segmentation_model,semantic_model):
                 category = class_id_dict[str(class_id)]
                 instances[str(instance_id)]={'id':int(instance_id),'class_id':int(class_id),'category_id':category['category_id'],'category_name':category['name'],'bbox':[int(box[0]),int(box[1]),int(box[2]),int(box[3])]}
             instance_panoptic_all[image_png[:-4].lstrip("0")]=instances
+            print("extract_json_from_panoptic_semantic:" + str(count) + "/" + str(len(images_png)))
         except Exception as e:
+            print(image_png)
             print(e)
     json.dump(instance_panoptic_all,open("data/middle/ioi_"+segmentation_model+".json",'w'))
 

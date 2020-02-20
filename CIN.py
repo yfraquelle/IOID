@@ -918,30 +918,29 @@ class CIN(nn.Module):
                         loss_semantic_sum += semantic_loss.data.cpu()[0] / steps
                         loss_influence_sum += influence_loss.data.cpu()[0] / steps
                         loss_interest_sum += interest_loss.data.cpu()[0] / steps
-                else:
-                    printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
-                                     suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f} - interest_loss: {:.5f}".format(
-                                         loss.data[0], rpn_class_loss.data[0], rpn_bbox_loss.data[0],
-                                         mrcnn_class_loss.data[0], mrcnn_bbox_loss.data[0],
-                                         mrcnn_mask_loss.data[0], semantic_loss.data[0],
-                                         influence_loss.data[0], interest_loss.data[0]), length=10)
-
-                    # Statistics
-                    loss_sum += loss.data[0] / steps
-                    loss_rpn_class_sum += rpn_class_loss.data[0] / steps
-                    loss_rpn_bbox_sum += rpn_bbox_loss.data[0] / steps
-                    loss_mrcnn_class_sum += mrcnn_class_loss.data[0] / steps
-                    loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data[0] / steps
-                    loss_mrcnn_mask_sum += mrcnn_mask_loss.data[0] / steps
-                    loss_semantic_sum += semantic_loss.data[0] / steps
-                    loss_influence_sum += influence_loss.data[0] / steps
-                    loss_interest_sum += interest_loss.data[0] / steps
-                    # Break after 'steps' steps
-                    if step == steps - 1:
-                        return loss_sum, loss_rpn_class_sum, loss_rpn_bbox_sum, loss_mrcnn_class_sum, loss_mrcnn_bbox_sum, loss_mrcnn_mask_sum, loss_semantic_sum, loss_influence_sum, loss_interest_sum
                     else:
-                        step += 1
+                        printProgressBar(step + 1, steps, prefix="\t{}/{}".format(step + 1, steps),
+                                         suffix="Complete - loss: {:.5f} - rpn_class_loss: {:.5f} - rpn_bbox_loss: {:.5f} - mrcnn_class_loss: {:.5f} - mrcnn_bbox_loss: {:.5f} - mrcnn_mask_loss: {:.5f} - semantic_loss: {:.5f} - influence_loss: {:.5f} - interest_loss: {:.5f}".format(
+                                             loss.data[0], rpn_class_loss.data[0], rpn_bbox_loss.data[0],
+                                             mrcnn_class_loss.data[0], mrcnn_bbox_loss.data[0],
+                                             mrcnn_mask_loss.data[0], semantic_loss.data[0],
+                                             influence_loss.data[0], interest_loss.data[0]), length=10)
 
+                        # Statistics
+                        loss_sum += loss.data[0] / steps
+                        loss_rpn_class_sum += rpn_class_loss.data[0] / steps
+                        loss_rpn_bbox_sum += rpn_bbox_loss.data[0] / steps
+                        loss_mrcnn_class_sum += mrcnn_class_loss.data[0] / steps
+                        loss_mrcnn_bbox_sum += mrcnn_bbox_loss.data[0] / steps
+                        loss_mrcnn_mask_sum += mrcnn_mask_loss.data[0] / steps
+                        loss_semantic_sum += semantic_loss.data[0] / steps
+                        loss_influence_sum += influence_loss.data[0] / steps
+                        loss_interest_sum += interest_loss.data[0] / steps
+                        # Break after 'steps' steps
+                        if step == steps - 1:
+                            return loss_sum, loss_rpn_class_sum, loss_rpn_bbox_sum, loss_mrcnn_class_sum, loss_mrcnn_bbox_sum, loss_mrcnn_mask_sum, loss_semantic_sum, loss_influence_sum, loss_interest_sum
+                        else:
+                            step += 1
                 else:
                     pass
             except Exception as e:

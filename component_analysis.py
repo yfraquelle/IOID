@@ -174,15 +174,17 @@ def compute_metric(panoptic_model, saliency_model):
     # print("base", base)
     precision,recall,f, _recall, _f=compare_mask(gt,pred,a2, base)
     result[str(round(a2,2))]={"precision":precision,"recall":recall,"f":f, "_recall":_recall, "_f": _f}
-    # json.dump(result,open("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result.json",'w'))
-    json.dump(result,open("results/ciedn_result/pred_gt_result.json",'w'))
-    # write_csv(['CIN_panoptic_all'],"results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result")
-    write_csv(['CIN_panoptic_all'], "results/ciedn_result/pred_gt_result")
+    json.dump(result,open("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result.json",'w'))
+    # json.dump(result,open("results/ciedn_result/pred_gt_result.json",'w'))
+    write_csv(['CIN_panoptic_all'],"results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result")
+    # write_csv(['CIN_panoptic_all'], "results/ciedn_result/pred_gt_result")
     # draw_pictures(wait_compares,result,saliency_train_model)
 
 def middle_process(panoptic_model, semantic_model, saliency_model):
     extract_json_from_panoptic_semantic(panoptic_model,semantic_model)
     map_instance_to_gt(panoptic_model)
+    generate_image_dict(panoptic_model)
+    # filter_by_saliency(panoptic_model, saliency_model)
 
 if __name__ == '__main__':
     panoptic_model = ''
@@ -207,6 +209,6 @@ if __name__ == '__main__':
     # saliency_model_list=[saliency_train_model,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency']
     # panoptic_model_list=['deeplab_panoptic','maskrcnn_panoptic']
 
-    # middle_process(segmentation_model, semantic_model, saliency_model)
-    # predict(config, panoptic_model,semantic_model, saliency_model)
+    middle_process(panoptic_model, semantic_model, saliency_model)
+    predict(config, panoptic_model,semantic_model, saliency_model)
     compute_metric(panoptic_model, saliency_model)

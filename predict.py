@@ -86,9 +86,9 @@ def run(mode, config):
                         category_name=class_dict[str(int(class_id))]['name']
                         id,color = id_generator.get_id_and_color(str(category_id))
                         mask=stuff_masks[i]==1
-                        panoptic_result[mask]=color
-                        semantic_result[mask] = class_id
-                        information_collector[str(id)]={"id":int(id),"bbox":[int(stuff_boxes[i][0]),int(stuff_boxes[i][1]),int(stuff_boxes[i][2]),int(stuff_boxes[i][3])],"category_id":category_id,"category_name":category_name}
+                        panoptic_result[mask]=[int(color[0]),int(color[1]),int(color[2])]
+                        semantic_result[mask] = [int(class_id),int(class_id),int(class_id)]
+                        information_collector[str(id)]={"id":int(id),"bbox":[int(stuff_boxes[i][0]),int(stuff_boxes[i][1]),int(stuff_boxes[i][2]),int(stuff_boxes[i][3])],"category_id":category_id,"class_id":int(class_id),"category_name":category_name}
 
                 if 'thing_class_ids' in result:
                     thing_class_ids, thing_boxes, thing_masks = result['thing_class_ids'], result['thing_boxes'], result['thing_masks']
@@ -97,12 +97,12 @@ def run(mode, config):
                         category_name=class_dict[str(int(class_id))]['name']
                         id, color = id_generator.get_id_and_color(str(category_id))
                         mask=thing_masks[i]==1
-                        panoptic_result[mask]=color
-                        semantic_result[mask] = class_id
-                        information_collector[str(id)]={"id": int(id), "bbox": [int(thing_boxes[i][0]),int(thing_boxes[i][1]),int(thing_boxes[i][2]),int(thing_boxes[i][3])], "category_id": category_id,"category_name":category_name}
+                        panoptic_result[mask]=[int(color[0]),int(color[1]),int(color[2])]
+                        semantic_result[mask] = [int(class_id),int(class_id),int(class_id)]
+                        information_collector[str(id)]={"id": int(id), "bbox": [int(thing_boxes[i][0]),int(thing_boxes[i][1]),int(thing_boxes[i][2]),int(thing_boxes[i][3])], "category_id": category_id,"class_id":int(class_id),"category_name":category_name}
 
-                scipy.misc.imsave("../CIN_panoptic_all/" + image_name.replace(".jpg", ".png"),panoptic_result)
-                scipy.misc.imsave("../CIN_semantic_all/" + image_name.replace(".jpg", ".png"),semantic_result)
+                Image.fromarray(panoptic_result.astype(np.uint8)).save("../CIN_panoptic_all/" + image_name.replace(".jpg",".png"))
+                Image.fromarray(semantic_result.astype(np.uint8)).save("../CIN_semantic_all/" + image_name.replace(".jpg", ".png"))
                 image_collector[str(int(image_id))]=information_collector
                 print(str(count)+"/"+str(len(val_images)))
             # else:
@@ -110,6 +110,7 @@ def run(mode, config):
             except Exception as e:
                 print("ERROR: "+image_name)
                 print(e)
+
         json.dump(image_collector,open("data/ioi_CIN_panoptic_all.json",'w'))
     elif mode=="instance":
         print("load weight")
@@ -147,9 +148,9 @@ def run(mode, config):
                         #print(category_name)
                         id,color = id_generator.get_id_and_color(str(category_id))
                         mask=stuff_masks[i]==1
-                        panoptic_result[mask]=color
+                        panoptic_result[mask]=[int(color[0]),int(color[1]),int(color[2])]
                         #stuff_result[mask]=color
-                        semantic_result[mask]=class_id
+                        semantic_result[mask]=[int(class_id),int(class_id),int(class_id)]
                         information_collector[str(id)]={"id":int(id),"bbox":[int(stuff_boxes[i][0]),int(stuff_boxes[i][1]),int(stuff_boxes[i][2]),int(stuff_boxes[i][3])],"category_id":int(category_id),"class_id":int(class_id),"category_name":category_name}
                     #plt.figure()
                     #plt.imshow(Image.fromarray(stuff_result.astype(np.uint8)))
@@ -162,7 +163,7 @@ def run(mode, config):
                         mask=thing_masks[i]==1
                         panoptic_result[mask]=[int(color[0]),int(color[1]),int(color[2])]
                         #thing_result[mask]=[int(color[0]),int(color[1]),int(color[2])]
-                        semantic_result[mask]=class_id
+                        semantic_result[mask]=[int(class_id),int(class_id),int(class_id)]
                         information_collector[str(id)]={"id": int(id), "bbox": [int(thing_boxes[i][0]),int(thing_boxes[i][1]),int(thing_boxes[i][2]),int(thing_boxes[i][3])], "category_id": int(category_id),"class_id":int(class_id),"category_name":category_name}
                     #plt.figure()
                     #plt.imshow(Image.fromarray(thing_result.astype(np.uint8)))
