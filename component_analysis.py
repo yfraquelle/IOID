@@ -50,10 +50,18 @@ class CINConfig(Config):
     THING_NUM_CLASSES = 1+80
     STUFF_NUM_CLASSES = 1+53
 
+class CIN(nn.Module):
+    def __init__(self):
+        super(CIN, self).__init__()
+        self.ciedn = CIEDN()
+
+    def forward(self, instance_groups):
+        return self.ciedn(instance_groups)
+
 
 def predict(config, panoptic_model, semantic_model, saliency_model):
     # log_file="logs/CIN_ooi_100_selection.pth"
-    ciedn = CIEDN().cuda()
+    ciedn = CIN().cuda()
     state_dict = torch.load(config.WEIGHT_PATH)
     ciedn.load_state_dict(state_dict, strict=False)
 
@@ -168,10 +176,10 @@ def compute_metric(panoptic_model, saliency_model):
     for image_id in gt_to_pred:
         instance = gt_to_pred[image_id]
         for instance_id in instance:
-            print(instance[instance_id])
+            # print(instance[instance_id])
             if instance[instance_id]['labeled']== True and len(instance[instance_id]['pred']) == 0 :
                 base += 1
-    # print("base", base)
+    print("base", base)
     precision,recall,f, _recall, _f=compare_mask(gt,pred,a2, base)
     result[str(round(a2,2))]={"precision":precision,"recall":recall,"f":f, "_recall":_recall, "_f": _f}
     json.dump(result,open("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result.json",'w'))
@@ -209,6 +217,6 @@ if __name__ == '__main__':
     # saliency_model_list=[saliency_train_model,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency']
     # panoptic_model_list=['deeplab_panoptic','maskrcnn_panoptic']
 
-    middle_process(panoptic_model, semantic_model, saliency_model)
+    # middle_process(panoptic_model, semantic_model, saliency_model)
     predict(config, panoptic_model,semantic_model, saliency_model)
     compute_metric(panoptic_model, saliency_model)
