@@ -19,7 +19,7 @@ def compare_mask(gt_data,predictions,a2, base):
     f_dict=dict()
     _recall_dict=dict()
     _f_dict=dict()
-    for threshold in np.arange(0.3,0.91,0.05):
+    for threshold in np.arange(0.3,0.5,0.01):
         prediction = np.where(predictions>threshold,1,0)
         TP[threshold] = np.sum(np.multiply(prediction, gt_data))
         TP_FP[threshold] = np.sum(prediction)
@@ -103,37 +103,90 @@ def draw_pictures(methods,result,saliency_model):
 
     plt.show()
 
+    for index,method in enumerate(methods):
+        method = method.split("/")[-1]
+        recall_list = result_a2[method]['f']
+        y_recall = []
+        for threshold in threshold_list:
+            y_recall.append(recall_list[threshold])
+        print(y_recall)
+        if index==0:
+            plt.plot(x_list, y_recall,'r', label=method+"-f")
+        elif index<=6:
+            plt.plot(x_list, y_recall, 'y', label=method + "-f")
+        elif index<=8:
+            plt.plot(x_list, y_recall, 'g', label=method + "-f")
+        elif index<=10:
+            plt.plot(x_list, y_recall, 'b', label=method + "-f")
+
+    plt.show()
+
+    for index,method in enumerate(methods):
+        method = method.split("/")[-1]
+        recall_list = result_a2[method]['_recall']
+        y_recall = []
+        for threshold in threshold_list:
+            y_recall.append(recall_list[threshold])
+        print(y_recall)
+        if index==0:
+            plt.plot(x_list, y_recall,'r', label=method+"-f")
+        elif index<=6:
+            plt.plot(x_list, y_recall, 'y', label=method + "-f")
+        elif index<=8:
+            plt.plot(x_list, y_recall, 'g', label=method + "-f")
+        elif index<=10:
+            plt.plot(x_list, y_recall, 'b', label=method + "-f")
+
+    for index,method in enumerate(methods):
+        method = method.split("/")[-1]
+        recall_list = result_a2[method]['_f']
+        y_recall = []
+        for threshold in threshold_list:
+            y_recall.append(recall_list[threshold])
+        print(y_recall)
+        if index==0:
+            plt.plot(x_list, y_recall,'r', label=method+"-f")
+        elif index<=6:
+            plt.plot(x_list, y_recall, 'y', label=method + "-f")
+        elif index<=8:
+            plt.plot(x_list, y_recall, 'g', label=method + "-f")
+        elif index<=10:
+            plt.plot(x_list, y_recall, 'b', label=method + "-f")
+
+    plt.show()
+
 def write_csv(methods,result_file):
     result=json.load(open(result_file+".json",'r'))
     with open(result_file+'.csv', 'w+', newline='') as csv_file:
         writer = csv.writer(csv_file)
         a_list=sorted(list(result.keys()))
         for a2 in a_list:
-            result_a2=result[a2]
             writer.writerow([a2])
-            # threshold_list = sorted(list(result_a2["CIN_saliency_all"]['precision'].keys()))
-            threshold_list = sorted(list(result_a2['precision'].keys()))
-            header = [" "]
-            for threshold in threshold_list:
-                header.append(threshold + "-p")
-                header.append(threshold + "-r")
-                header.append(threshold + "-f")
-                header.append(threshold + '-r*')
-                header.append(threshold + '-f*')
-            writer.writerow(header)
-            precision_list = result_a2['precision']
-            _r_list = result_a2['_recall']
-            _f_list = result_a2['_f']
-            recall_list = result_a2['recall']
-            f_list = result_a2['f']
-            result_row = ['CIN']
-            for threshold in threshold_list:
-                result_row.append(precision_list[threshold])
-                result_row.append(_r_list[threshold])
-                result_row.append(_f_list[threshold])
-                result_row.append(recall_list[threshold])
-                result_row.append(f_list[threshold])
-            writer.writerow(result_row)
+            for method in methods:
+                result_a2=result[a2][method]
+                # threshold_list = sorted(list(result_a2["CIN_saliency_all"]['precision'].keys()))
+                threshold_list = sorted(list(result_a2['precision'].keys()))
+                header = [" "]
+                for threshold in threshold_list:
+                    header.append(threshold + "-p")
+                    header.append(threshold + "-r")
+                    header.append(threshold + "-f")
+                    header.append(threshold + '-r*')
+                    header.append(threshold + '-f*')
+                writer.writerow(header)
+                precision_list = result_a2['precision']
+                _r_list = result_a2['_recall']
+                _f_list = result_a2['_f']
+                recall_list = result_a2['recall']
+                f_list = result_a2['f']
+                result_row = ['CIN']
+                for threshold in threshold_list:
+                    result_row.append(precision_list[threshold])
+                    result_row.append(_r_list[threshold])
+                    result_row.append(_f_list[threshold])
+                    result_row.append(recall_list[threshold])
+                    result_row.append(f_list[threshold])
+                writer.writerow(result_row)
             # for method in methods:
             #     method=metholistd.split("/")[-1]
             #     precision_list=result_a2[method]['precision']
@@ -147,19 +200,27 @@ def write_csv(methods,result_file):
             #     writer.writerow(result_row)
 
 if __name__=="__main__":
-    saliency_train_model="CIN_saliency_all_old"
-    panoptic_train_model="CIN_panoptic_all_old"
-    wait_compares=[saliency_train_model,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency',
-                   'maskrcnn_panoptic','deeplab_panoptic','../../../lstm/'+panoptic_train_model+'/'+saliency_train_model,'../../../only/'+panoptic_train_model+'/'+saliency_train_model]
+    saliency_train_model="CIN_saliency_all"
+    panoptic_train_model="CIN_panoptic_all"
+    wait_compares=[saliency_train_model]#,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency',
+                   # 'maskrcnn_panoptic','deeplab_panoptic']#,'../../../lstm/'+panoptic_train_model+'/'+saliency_train_model,'../../../only/'+panoptic_train_model+'/'+saliency_train_model]
     result={}
-    for a2 in np.arange(0.1, 3, 0.1):
-        result[str(round(a2, 2))] = {}
-        for wait_compare in wait_compares:
-            gt = np.load("results/cirnn_result_pair_influence/"+panoptic_train_model+"/"+saliency_train_model+"/"+wait_compare+"/gt.npy")
-            pred = maxminnorm(np.load("results/cirnn_result_pair_influence/"+panoptic_train_model+"/"+saliency_train_model+"/"+wait_compare+"/pred.npy"))
-            precision,recall,f=compare_mask(gt,pred,a2)
-            result[str(round(a2,2))][wait_compare]={"precision":precision,"recall":recall,"f":f}
-    result_file="results/result_old"
+    a2=0.3# in np.arange(0.1, 3, 0.1):
+    result[str(round(a2, 2))] = {}
+    for wait_compare in wait_compares:
+        gt = np.load("results/ciedn_result/"+panoptic_train_model+"_"+saliency_train_model+"_gt.npy")
+        pred = maxminnorm(np.load("results/ciedn_result/"+panoptic_train_model+"_"+saliency_train_model+"_pred.npy"))
+        gt_to_pred = json.load(open("data/middle/ioi_instance_gt_pred_" + panoptic_train_model + ".json"))
+        base = 0
+        for image_id in gt_to_pred:
+            instance = gt_to_pred[image_id]
+            for instance_id in instance:
+                # print(instance[instance_id])
+                if instance[instance_id]['labeled'] == True and len(instance[instance_id]['pred']) == 0:
+                    base += 1
+        precision,recall,f,_recall,_f=compare_mask(gt,pred,a2,base)
+        result[str(round(a2,2))][wait_compare]={"precision":precision,"recall":recall,"f":f,"_recall":_recall,"_f":_f}
+    result_file="results/result_com"
     json.dump(result,open(result_file+".json",'w'))
     write_csv(wait_compares,result_file)
     draw_pictures(wait_compares,result,saliency_train_model)

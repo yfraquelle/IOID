@@ -217,6 +217,6 @@ if __name__ == '__main__':
     # saliency_model_list=[saliency_train_model,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency']
     # panoptic_model_list=['deeplab_panoptic','maskrcnn_panoptic']
 
-    # middle_process(panoptic_model, semantic_model, saliency_model)
+    middle_process(panoptic_model, semantic_model, saliency_model)
     predict(config, panoptic_model,semantic_model, saliency_model)
     compute_metric(panoptic_model, saliency_model)
