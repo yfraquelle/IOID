@@ -1834,20 +1834,25 @@ class CIN(nn.Module):
                 detections = detection_layer(self.config, rpn_rois, mrcnn_class, mrcnn_bbox, image_metas)  # 34,6
                 h, w = self.config.IMAGE_SHAPE[:2]
                 scale = Variable(torch.from_numpy(np.array([h, w, h, w])).float(), requires_grad=False)
-                if self.config.GPU_COUNT:
-                    scale = scale.cuda()
-                # print(detections.shape)
-                detection_boxes = detections[:, :4] / scale
+                if len(detections.shape)>1:
+                    detection_boxes = detections[:, :4] / scale
 
-                # Add back batch dimension
-                detection_boxes = detection_boxes.unsqueeze(0)
+                    # Add back batch dimension
+                    detection_boxes = detection_boxes.unsqueeze(0)
 
-                # Create masks for detections
-                mrcnn_mask = self.mask(mrcnn_feature_maps, detection_boxes)  # x, 134, 28, 28
+                    # Create masks for detections
+                    mrcnn_mask = self.mask(mrcnn_feature_maps, detection_boxes)  # x, 134, 28, 28
 
-                # Add back batch dimension
-                detections = detections.unsqueeze(0)  # [1, x, 6]
-                mrcnn_mask = mrcnn_mask.unsqueeze(0)  # [1, x, 81, 28, 28]
+                    # Add back batch dimension
+                    detections = detections.unsqueeze(0)  # [1, x, 6]
+                    mrcnn_mask = mrcnn_mask.unsqueeze(0)  # [1, x, 81, 28, 28]
+                # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ THING
+                else:
+                    detections=torch.Tensor()
+                    mrcnn_mask=torch.Tensor()
+                    if self.config.GPU_COUNT:
+                        detections=detections.cuda()
+                        mrcnn_mask=mrcnn_mask.cuda()
 
                 # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！ THING
 
