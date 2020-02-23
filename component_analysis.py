@@ -162,31 +162,50 @@ def predict(config, panoptic_model, semantic_model, saliency_model):
     np.save("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_gt.npy", gt_list)
     np.save("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_pred.npy", prediction_list)
 
-def compute_metric(panoptic_model, saliency_model):
+def compute_metric(panoptic_train_model, saliency_train_model):
     result = {}
     a2 = 0.3
-    # for a2 in np.arange(0.1, 3, 0.1):
-    result[str(round(a2, 2))] = {}
-    gt = np.load("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_gt.npy")
-    pred = np.load("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_pred.npy")
-    # gt = np.load("results/ciedn_result/gt.npy")
-    # pred = np.load("results/ciedn_result/pred.npy")
-    gt_to_pred = json.load(open("data/middle/ioi_instance_gt_pred_"+panoptic_model+".json"))
-    base = 0
-    for image_id in gt_to_pred:
-        instance = gt_to_pred[image_id]
-        for instance_id in instance:
-            # print(instance[instance_id])
-            if instance[instance_id]['labeled']== True and len(instance[instance_id]['pred']) == 0 :
-                base += 1
-    print("base", base)
-    precision,recall,f, _recall, _f=compare_mask(gt,pred,a2, base)
-    result[str(round(a2,2))]={"precision":precision,"recall":recall,"f":f, "_recall":_recall, "_f": _f}
-    json.dump(result,open("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result.json",'w'))
-    # json.dump(result,open("results/ciedn_result/pred_gt_result.json",'w'))
-    write_csv(['CIN_panoptic_all'],"results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result")
+    result = {}
+    wait_compares = [saliency_train_model, 'a-PyTorch-Tutorial-to-Image-Captioning_saiency', 'DSS-pytorch_saliency',
+                     'MSRNet_saliency', 'NLDF_saliency', 'PiCANet-Implementation_saliency', 'salgan_saliency',
+                     'thing_panoptic', 'stuff_panoptic']
+    saliency_model_list = [saliency_train_model, 'a-PyTorch-Tutorial-to-Image-Captioning_saiency', 'DSS-pytorch_saliency',
+                            'MSRNet_saliency', 'NLDF_saliency', 'PiCANet-Implementation_saliency', 'salgan_saliency']
+    panoptic_model_list = [panoptic_train_model, 'thing_panoptic', 'stuff_panoptic']
+    for wait_compare in wait_compares:
+        panoptic_model = panoptic_train_model
+        saliency_model = saliency_train_model
+        if wait_compare in saliency_model_list:
+            saliency_model = wait_compare
+        elif wait_compare in panoptic_model_list:
+            panoptic_model = wait_compare
+        gt = np.load("results/ciedn_result/" + panoptic_model + "_" + saliency_model + "_gt.npy")
+        pred = np.load("results/ciedn_result/" + panoptic_model + "_" + saliency_model + "_pred.npy")
+        base = 0
+        if wait_compare in panoptic_model_list:
+            gt_to_pred = json.load(open("data/middle/ioi_instance_gt_pred_"+panoptic_model+".json"))
+            print("data/middle/ioi_instance_gt_pred_"+panoptic_model+".json")
+            for image_id in gt_to_pred:
+                instance = gt_to_pred[image_id]
+                for instance_id in instance:
+                    if instance[instance_id]['labeled']== True and len(instance[instance_id]['pred']) == 0 :
+                        base += 1
+        else:
+            gt_to_pred = json.load(open("data/middle/ioi_instance_gt_pred_"+panoptic_train_model+".json"))
+            for image_id in gt_to_pred:
+                instance = gt_to_pred[image_id]
+                for instance_id in instance:
+                    if instance[instance_id]['labeled']== True and len(instance[instance_id]['pred']) == 0 :
+                        base += 1
+        print(wait_compare, "base", base)
+        precision,recall,f, _recall, _f=compare_mask(gt,pred,a2, base)
+        # result[str(round(a2,2))][wait_compare]={"precision":precision,"recall":recall,"f":f, "_recall":_recall, "_f": _f}
+        result[wait_compare] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall,"_f": _f}
+    # json.dump(result,open("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result.json",'w'))
+    json.dump(result,open("results/ciedn_result/result_"+panoptic_train_model+"_"+saliency_train_model+".json",'w'))
+    write_csv(wait_compares,"results/ciedn_result/result_"+panoptic_train_model+"_"+saliency_train_model)
     # write_csv(['CIN_panoptic_all'], "results/ciedn_result/pred_gt_result")
-    # draw_pictures(wait_compares,result,saliency_train_model)
+    draw_pictures(wait_compares,result)
 
 def middle_process(panoptic_model, semantic_model, saliency_model):
     extract_json_from_panoptic_semantic(panoptic_model,semantic_model)
@@ -214,9 +233,17 @@ if __name__ == '__main__':
     else:
         config = CINConfig()
 
-    # saliency_model_list=[saliency_train_model,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency']
-    # panoptic_model_list=['deeplab_panoptic','maskrcnn_panoptic']
+    panoptic_model = 'CIN_panoptic_all'
+    saliency_model = 'CIN_saliency_all'
+    semantic_model = 'CIN_semantic_all'
 
-    middle_process(panoptic_model, semantic_model, saliency_model)
-    predict(config, panoptic_model,semantic_model, saliency_model)
+
+    # saliency_model_list=[saliency_model,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency']
+    # panoptic_model_list = ['stuff_panoptic', 'thing_panoptic']
+    # for saliency_model in saliency_model_list:
+    #     predict(config, panoptic_model, semantic_model, saliency_model)
+    #
+    # for panoptic_model in panoptic_model_list:
+    #     predict(config, panoptic_model, semantic_model, saliency_model)
+
     compute_metric(panoptic_model, saliency_model)

@@ -111,9 +111,10 @@ def generate_image_dict(segmentation_model):
     # val_gt_images = dict(train_gt_images, **val_gt_images)
     ioi_val_images_id = list(val_gt_images.keys())
     ioi_val_images_dict = {}
-    for image_id in val_gt_images:
-        image_info = val_gt_images[image_id]
+    print("pred to gt length", len(pred_to_gt))
+    for image_id in val_dict:
         segments_info = val_dict[image_id]
+        image_info = val_gt_images[image_id]
         for instance_id in segments_info:
             if instance_id == "0":
                 pass
@@ -125,7 +126,23 @@ def generate_image_dict(segmentation_model):
                                              "image_name": image_info['image_name'],
                                              "height": image_info['height'], "width": image_info['width'],
                                              'segments_info': segments_info}
-    json.dump(ioi_val_images_dict, open("data/middle/ioi_val_images_dict_"+segmentation_model+".json", 'w'))
+    json.dump(ioi_val_images_dict, open("data/middle/ioi_val_images_dict_" + segmentation_model + ".json", 'w'))
+
+    # for image_id in val_gt_images:
+    #     image_info = val_gt_images[image_id]
+    #     segments_info = val_dict[image_id]
+    #     for instance_id in segments_info:
+    #         if instance_id == "0":
+    #             pass
+    #         instance = segments_info[instance_id]
+    #         if instance_id in pred_to_gt[image_id]:
+    #             instance['labeled'] = pred_to_gt[image_id][instance_id]['label']
+    #     if image_id in ioi_val_images_id:
+    #         ioi_val_images_dict[image_id] = {"image_id": image_info['image_id'],
+    #                                          "image_name": image_info['image_name'],
+    #                                          "height": image_info['height'], "width": image_info['width'],
+    #                                          'segments_info': segments_info}
+    # json.dump(ioi_val_images_dict, open("data/middle/ioi_val_images_dict_"+segmentation_model+".json", 'w'))
 
 def split_dataset(segmentation_model):
     pred_to_gt=json.load(open("data/middle/ioi_instance_pred_gt_"+segmentation_model+".json",'r'))
@@ -303,20 +320,22 @@ def run_proc(begin, end, results_file, images_dict, segmentation_model,saliency_
 import sys
 
 if __name__=='__main__':
-    segmentation_model = "CIN_panoptic_all"
-    semantic_model = "CIN_semantic_all"
-    saliency_model = "CIN_saliency_all"
-    # extract_json_from_panoptic_semantic(segmentation_model,semantic_model)
-    # map_instance_to_gt(segmentation_model)
-    # split_dataset(segmentation_model)
+    segmentation_model = "CIN_panoptic"
+    semantic_model = "CIN_semantic"
+    saliency_model = "CIN_saliency"
+    extract_json_from_panoptic_semantic(segmentation_model,semantic_model)
+    map_instance_to_gt(segmentation_model)
+    split_dataset(segmentation_model)
     # filter_by_saliency(segmentation_model, saliency_model)
     # compute_instance_saliency(segmentation_model, saliency_model)
-    # for segmentation in ['maskrcnn_panoptic','deeplab_panoptic']:
-    #     extract_json_from_panoptic_semantic(segmentation, segmentation.replace("panoptic","semantic"),only_val=True)
-    #     map_instance_to_gt(segmentation)
-    #     generate_image_dict(segmentation)
-    #     filter_by_saliency(segmentation, saliency_model)
-    compute_instance_saliency_list(segmentation_model,saliency_model, \
-                                   ['a-PyTorch-Tutorial-to-Image-Captioning_saiency', \
-                                    'DSS-pytorch_saliency', 'MSRNet_saliency', 'NLDF_saliency', \
-                                    'PiCANet-Implementation_saliency', 'salgan_saliency'])
+    for segmentation in ['deeplab_panoptic','maskrcnn_panoptic',]:
+        segmentation = segmentation.replace("deeplab", "stuff")
+        segmentation = segmentation.replace("maskrcnn", "thing")
+        extract_json_from_panoptic_semantic(segmentation, segmentation.replace("panoptic","semantic"))
+        map_instance_to_gt(segmentation)
+        generate_image_dict(segmentation)
+        # filter_by_saliency(segmentation, saliency_model)
+    # compute_instance_saliency_list(segmentation_model,saliency_model, \
+    #                                ['a-PyTorch-Tutorial-to-Image-Captioning_saiency', \
+    #                                 'DSS-pytorch_saliency', 'MSRNet_saliency', 'NLDF_saliency', \
+    #                                 'PiCANet-Implementation_saliency', 'salgan_saliency'])

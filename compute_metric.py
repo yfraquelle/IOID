@@ -19,7 +19,7 @@ def compare_mask(gt_data,predictions,a2, base):
     f_dict=dict()
     _recall_dict=dict()
     _f_dict=dict()
-    for threshold in np.arange(0.3,0.5,0.01):
+    for threshold in np.arange(0.3,0.7,0.01):
         prediction = np.where(predictions>threshold,1,0)
         TP[threshold] = np.sum(np.multiply(prediction, gt_data))
         TP_FP[threshold] = np.sum(prediction)
@@ -61,132 +61,149 @@ def compare_mask_wih_a2_and_threshold(gt_data, predictions,threshold):
 
 from matplotlib import pyplot as plt
 
-def draw_pictures(methods,result,saliency_model):
-    result_a2 = result["0.3"]
-    threshold_list = sorted(list(result_a2[saliency_model]['precision'].keys()))
-    x_list=list(threshold_list)
+def draw_pictures(methods,result):
+    threshold_list = sorted(list(result[methods[0]]['precision'].keys()))
+    x_list = list(threshold_list)
 
     plt.figure(figsize=(8, 8))
-    # plt.subplot(1, 2, 1)
-    # plt.title('precision')
-    for index,method in enumerate(methods):
+    for index, method in enumerate(methods):
         method = method.split("/")[-1]
-        precision_list = result_a2[method]['precision']
+        precision_list = result[method]['precision']
         y_precision = []
         for threshold in threshold_list:
             y_precision.append(precision_list[threshold])
-        if index==0:
-            plt.plot(x_list, y_precision,'r', label=method+"-p")
-        elif index<=6:
+        # print(x_list)
+        # print(y_precision)
+        if index == 0:
+            plt.plot(x_list, y_precision, 'r', label=method + "-p")
+        elif index <= 6:
             plt.plot(x_list, y_precision, 'y', label=method + "-p")
-        elif index<=8:
+        elif index <= 8:
             plt.plot(x_list, y_precision, 'g', label=method + "-p")
-        elif index<=10:
+        elif index <= 10:
             plt.plot(x_list, y_precision, 'b', label=method + "-p")
 
-    # plt.subplot(1, 2, 2)
-    # plt.title('recall')
-    for index,method in enumerate(methods):
+    for index, method in enumerate(methods):
         method = method.split("/")[-1]
-        recall_list = result_a2[method]['recall']
+        recall_list = result[method]['recall']
         y_recall = []
         for threshold in threshold_list:
             y_recall.append(recall_list[threshold])
-        if index==0:
-            plt.plot(x_list, y_recall,'r', label=method+"-r")
-        elif index<=6:
+        # print(y_recall)
+        if index == 0:
+            plt.plot(x_list, y_recall, 'r', label=method + "-r")
+        elif index <= 6:
             plt.plot(x_list, y_recall, 'y', label=method + "-r")
-        elif index<=8:
+        elif index <= 8:
             plt.plot(x_list, y_recall, 'g', label=method + "-r")
-        elif index<=10:
+        elif index <= 10:
             plt.plot(x_list, y_recall, 'b', label=method + "-r")
 
+    for index, method in enumerate(methods):
+        method = method.split("/")[-1]
+        recall_list = result[method]['f']
+        y_recall = []
+        for threshold in threshold_list:
+            y_recall.append(recall_list[threshold])
+        # print(y_recall)
+        if index == 0:
+            plt.plot(x_list, y_recall, 'r', label=method + "-f")
+        elif index <= 6:
+            plt.plot(x_list, y_recall, 'y', label=method + "-f")
+        elif index <= 8:
+            plt.plot(x_list, y_recall, 'g', label=method + "-f")
+        elif index <= 10:
+            plt.plot(x_list, y_recall, 'b', label=method + "-f")
+
+    # plt.legend()
     plt.show()
 
-    for index,method in enumerate(methods):
+    plt.figure(figsize=(8, 8))
+
+    for index, method in enumerate(methods):
         method = method.split("/")[-1]
-        recall_list = result_a2[method]['f']
+        precision_list = result[method]['precision']
+        y_precision = []
+        for threshold in threshold_list:
+            y_precision.append(precision_list[threshold])
+        # print(x_list)
+        # print(y_precision)
+        if index == 0:
+            plt.plot(x_list, y_precision, 'r', label=method + "-p")
+        elif index <= 6:
+            plt.plot(x_list, y_precision, 'y', label=method + "-p")
+        elif index <= 8:
+            plt.plot(x_list, y_precision, 'g', label=method + "-p")
+        elif index <= 10:
+            plt.plot(x_list, y_precision, 'b', label=method + "-p")
+
+    for index, method in enumerate(methods):
+        method = method.split("/")[-1]
+        recall_list = result[method]['_recall']
         y_recall = []
         for threshold in threshold_list:
             y_recall.append(recall_list[threshold])
-        print(y_recall)
-        if index==0:
-            plt.plot(x_list, y_recall,'r', label=method+"-f")
-        elif index<=6:
-            plt.plot(x_list, y_recall, 'y', label=method + "-f")
-        elif index<=8:
-            plt.plot(x_list, y_recall, 'g', label=method + "-f")
-        elif index<=10:
-            plt.plot(x_list, y_recall, 'b', label=method + "-f")
+        # print(y_recall)
+        if index == 0:
+            plt.plot(x_list, y_recall, 'r', label=method + "-r")
+        elif index <= 6:
+            plt.plot(x_list, y_recall, 'y', label=method + "-r")
+        elif index <= 8:
+            plt.plot(x_list, y_recall, 'g', label=method + "-r")
+        elif index <= 10:
+            plt.plot(x_list, y_recall, 'b', label=method + "-r")
 
-    plt.show()
-
-    for index,method in enumerate(methods):
+    for index, method in enumerate(methods):
         method = method.split("/")[-1]
-        recall_list = result_a2[method]['_recall']
+        recall_list = result[method]['_f']
         y_recall = []
         for threshold in threshold_list:
             y_recall.append(recall_list[threshold])
-        print(y_recall)
-        if index==0:
-            plt.plot(x_list, y_recall,'r', label=method+"-f")
-        elif index<=6:
+        # print(y_recall)
+        if index == 0:
+            plt.plot(x_list, y_recall, 'r', label=method + "-f")
+        elif index <= 6:
             plt.plot(x_list, y_recall, 'y', label=method + "-f")
-        elif index<=8:
+        elif index <= 8:
             plt.plot(x_list, y_recall, 'g', label=method + "-f")
-        elif index<=10:
+        elif index <= 10:
             plt.plot(x_list, y_recall, 'b', label=method + "-f")
 
-    for index,method in enumerate(methods):
-        method = method.split("/")[-1]
-        recall_list = result_a2[method]['_f']
-        y_recall = []
-        for threshold in threshold_list:
-            y_recall.append(recall_list[threshold])
-        print(y_recall)
-        if index==0:
-            plt.plot(x_list, y_recall,'r', label=method+"-f")
-        elif index<=6:
-            plt.plot(x_list, y_recall, 'y', label=method + "-f")
-        elif index<=8:
-            plt.plot(x_list, y_recall, 'g', label=method + "-f")
-        elif index<=10:
-            plt.plot(x_list, y_recall, 'b', label=method + "-f")
-
+    # plt.legend()
     plt.show()
 
 def write_csv(methods,result_file):
     result=json.load(open(result_file+".json",'r'))
     with open(result_file+'.csv', 'w+', newline='') as csv_file:
         writer = csv.writer(csv_file)
-        a_list=sorted(list(result.keys()))
-        for a2 in a_list:
-            writer.writerow([a2])
-            for method in methods:
-                result_a2=result[a2][method]
-                # threshold_list = sorted(list(result_a2["CIN_saliency_all"]['precision'].keys()))
-                threshold_list = sorted(list(result_a2['precision'].keys()))
-                header = [" "]
-                for threshold in threshold_list:
-                    header.append(threshold + "-p")
-                    header.append(threshold + "-r")
-                    header.append(threshold + "-f")
-                    header.append(threshold + '-r*')
-                    header.append(threshold + '-f*')
-                writer.writerow(header)
-                precision_list = result_a2['precision']
-                _r_list = result_a2['_recall']
-                _f_list = result_a2['_f']
-                recall_list = result_a2['recall']
-                f_list = result_a2['f']
-                result_row = ['CIN']
-                for threshold in threshold_list:
-                    result_row.append(precision_list[threshold])
-                    result_row.append(_r_list[threshold])
-                    result_row.append(_f_list[threshold])
-                    result_row.append(recall_list[threshold])
-                    result_row.append(f_list[threshold])
-                writer.writerow(result_row)
+        # a_list=sorted(list(result.keys()))
+        # for a2 in a_list:
+        #     writer.writerow([a2])
+        for method in methods:
+            result_method=result[method]
+            # threshold_list = sorted(list(result_a2["CIN_saliency_all"]['precision'].keys()))
+            threshold_list = sorted(list(result[method]['precision'].keys()))
+            header = [" "]
+            for threshold in threshold_list:
+                header.append(threshold + "-p")
+                header.append(threshold + "-r")
+                header.append(threshold + "-f")
+                header.append(threshold + '-r*')
+                header.append(threshold + '-f*')
+            writer.writerow(header)
+            precision_list = result_method['precision']
+            recall_list = result_method['recall']
+            f_list = result_method['f']
+            _recall_list = result_method['_recall']
+            _f_list = result_method['_f']
+            result_row = [method]
+            for threshold in threshold_list:
+                result_row.append(precision_list[threshold])
+                result_row.append(_recall_list[threshold])
+                result_row.append(_f_list[threshold])
+                result_row.append(recall_list[threshold])
+                result_row.append(f_list[threshold])
+            writer.writerow(result_row)
             # for method in methods:
             #     method=metholistd.split("/")[-1]
             #     precision_list=result_a2[method]['precision']
@@ -202,25 +219,28 @@ def write_csv(methods,result_file):
 if __name__=="__main__":
     saliency_train_model="CIN_saliency_all"
     panoptic_train_model="CIN_panoptic_all"
-    wait_compares=[saliency_train_model]#,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency',
-                   # 'maskrcnn_panoptic','deeplab_panoptic']#,'../../../lstm/'+panoptic_train_model+'/'+saliency_train_model,'../../../only/'+panoptic_train_model+'/'+saliency_train_model]
-    result={}
-    a2=0.3# in np.arange(0.1, 3, 0.1):
-    result[str(round(a2, 2))] = {}
-    for wait_compare in wait_compares:
-        gt = np.load("results/ciedn_result/"+panoptic_train_model+"_"+saliency_train_model+"_gt.npy")
-        pred = maxminnorm(np.load("results/ciedn_result/"+panoptic_train_model+"_"+saliency_train_model+"_pred.npy"))
-        gt_to_pred = json.load(open("data/middle/ioi_instance_gt_pred_" + panoptic_train_model + ".json"))
-        base = 0
-        for image_id in gt_to_pred:
-            instance = gt_to_pred[image_id]
-            for instance_id in instance:
-                # print(instance[instance_id])
-                if instance[instance_id]['labeled'] == True and len(instance[instance_id]['pred']) == 0:
-                    base += 1
-        precision,recall,f,_recall,_f=compare_mask(gt,pred,a2,base)
-        result[str(round(a2,2))][wait_compare]={"precision":precision,"recall":recall,"f":f,"_recall":_recall,"_f":_f}
-    result_file="results/result_com"
-    json.dump(result,open(result_file+".json",'w'))
-    write_csv(wait_compares,result_file)
+    # wait_compares=[saliency_train_model]#,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency',
+    #                # 'maskrcnn_panoptic','deeplab_panoptic']#,'../../../lstm/'+panoptic_train_model+'/'+saliency_train_model,'../../../only/'+panoptic_train_model+'/'+saliency_train_model]
+    # result={}
+    # a2=0.3# in np.arange(0.1, 3, 0.1):
+    # result[str(round(a2, 2))] = {}
+    # for wait_compare in wait_compares:
+    #     gt = np.load("results/ciedn_result/"+panoptic_train_model+"_"+saliency_train_model+"_gt.npy")
+    #     pred = maxminnorm(np.load("results/ciedn_result/"+panoptic_train_model+"_"+saliency_train_model+"_pred.npy"))
+    #     gt_to_pred = json.load(open("data/middle/ioi_instance_gt_pred_" + panoptic_train_model + ".json"))
+    #     base = 0
+    #     for image_id in gt_to_pred:
+    #         instance = gt_to_pred[image_id]
+    #         for instance_id in instance:
+    #             # print(instance[instance_id])
+    #             if instance[instance_id]['labeled'] == True and len(instance[instance_id]['pred']) == 0:
+    #                 base += 1
+    #     precision,recall,f,_recall,_f=compare_mask(gt,pred,a2,base)
+    #     result[str(round(a2,2))][wait_compare]={"precision":precision,"recall":recall,"f":f,"_recall":_recall,"_f":_f}
+    # result_file="results/result_com"
+    # json.dump(result,open(result_file+".json",'w'))
+    # write_csv(wait_compares,result_file)
+    wait_compares = ['CIN_saliency_all']
+    result = json.load(open("results/ciedn_result/CIN_panoptic_all_CIN_saliency_all_result.json", 'r'))
+    saliency_train_model = 'CIN_saliency_all'
     draw_pictures(wait_compares,result,saliency_train_model)
