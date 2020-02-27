@@ -155,14 +155,15 @@ def run(config):
         gl=np.array(gt_list)
         pl=np.where(pl > 0.4, 1, 0)
 
+        a2=0.3
         TP = np.sum(np.multiply(pl, gl))
         TP_FP = np.sum(pl)
         TP_FN = np.sum(gl)
         precision = TP / TP_FP
         recall = TP / TP_FN
         recall_ = TP / (TP_FN + base)
-        f=precision/recall
-        f_=precision/recall_
+        f = (a2 + 1) * precision * recall / (a2 * precision + recall)
+        f_ = (a2 + 1) * precision * recall_ / (a2 * precision + recall_)
         print("base: "+str(base)+"  precision: "+str(precision)+"  recall: " + str(recall_)+"  f: " + str(f_)+"  recall*: " + str(recall)+"  f*: " + str(f))
 
     predition_list = np.array(prediction_list)
