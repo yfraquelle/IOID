@@ -19,7 +19,9 @@ mkdir models
 mkdir data
 mkdir results
 mkdir ../data
-mkdir data/middle
+mkdir ../CIN_semantic_val
+mkdir ../CIN_panoptic_val
+mkdir ../CIN_saliency_val
 mkdir results/CIEDN_pred
 mkdir results/ciedn_result
 mkdir results/validate

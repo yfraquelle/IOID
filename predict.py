@@ -10,6 +10,7 @@ from utils.utils import IdGenerator
 from PIL import Image
 from matplotlib import pyplot as plt
 from utils import visualize
+from middle_process import map_instance_to_gt
 
 import argparse
 import yaml
@@ -22,7 +23,7 @@ IMAGENET_MODEL_PATH = os.path.join(ROOT_DIR, "models/resnet50_imagenet.pth") # �
 
 MODEL_DIR = os.path.join(ROOT_DIR, "logs") # 其中的文件是CIN模型训练得到的
 
-id_generator=IdGenerator(json.load(open("data/class_dict.json",'r')))
+id_generator=IdGenerator(class_dict)
 
 class CINConfig(Config):
     NAME = "ooi"
@@ -49,14 +50,10 @@ def run(mode, config):
 
     if mode=="insttr":
         model.load_weights(config.WEIGHT_PATH)
-        # model.load_part_weights("logs/PFPN_ooi_0034_maskrcnn.pth",mode="instance")
-        # model.load_part_weights("logs/CIN_ooi_0009_saliency.pth",mode="p_interest")
         val_images=json.load(open(os.path.join(config.JSON_PATH, "val_images_dict.json"),'r'))
-        # train_images = json.load(open("data/train_images_dict.json", 'r'))
-        # val_images = dict(train_images, **val_images)
         image_collector=dict()
         count=0
-        exist=os.listdir("../CIN_saliency_all")
+        exist=os.listdir("../CIN_saliency_val")
         for image_id in val_images:
             try:
                 count+=1
@@ -68,13 +65,11 @@ def run(mode, config):
                 img=skimage.io.imread(os.path.join(config.IMAGE_PATH, "ioid_images/"+image_name))
                 if len(img.shape)==2:
                     img = np.stack([img,img,img],axis=2)
-                result=model.detect([img],limit="insttr")[0] #
-                # print("result", result)
-                # visualize.display_instances(img, result['stuff_boxes'], result['stuff_masks'], result['stuff_class_ids'], class_names)
-                semantic_labels=result['semantic_segment']
+                result=model.detect([img],limit="insttr")[0]
 
+                semantic_labels=result['semantic_segment']
                 influence_map=result['influence_map']
-                scipy.misc.toimage(influence_map, cmin=0, cmax=1).save("../CIN_saliency_all/" + image_name.replace(".jpg",".png"))
+                scipy.misc.toimage(influence_map, cmin=0, cmax=1).save("../CIN_saliency_val/" + image_name.replace(".jpg",".png"))
                 panoptic_result=np.zeros(img.shape)
                 semantic_result = np.zeros(img.shape)
 
@@ -101,26 +96,19 @@ def run(mode, config):
                         semantic_result[mask] = [int(class_id),int(class_id),int(class_id)]
                         information_collector[str(id)]={"id": int(id), "bbox": [int(thing_boxes[i][0]),int(thing_boxes[i][1]),int(thing_boxes[i][2]),int(thing_boxes[i][3])], "category_id": category_id,"class_id":int(class_id),"category_name":category_name}
 
-                Image.fromarray(panoptic_result.astype(np.uint8)).save("../CIN_panoptic_all/" + image_name.replace(".jpg",".png"))
-                Image.fromarray(semantic_result.astype(np.uint8)).save("../CIN_semantic_all/" + image_name.replace(".jpg", ".png"))
-                image_collector[str(int(image_id))]=information_collector
+                Image.fromarray(panoptic_result.astype(np.uint8)).save("../CIN_panoptic_val/" + image_name.replace(".jpg",".png"))
+                Image.fromarray(semantic_result.astype(np.uint8)).save("../CIN_semantic_val/" + image_name.replace(".jpg", ".png"))
+                image['predictions'] = information_collector
                 print(str(count)+"/"+str(len(val_images)))
-            # else:
-            #     continue
             except Exception as e:
                 print("ERROR: "+image_name)
                 print(e)
-
-        json.dump(image_collector,open("data/ioi_CIN_panoptic_all.json",'w'))
+        map_instance_to_gt(val_images,"CIN_panoptic_val")
     elif mode=="instance":
-        print("load weight")
         model.load_weights(config.WEIGHT_PATH)
         val_images=json.load(open(os.path.join(config.JSON_PATH, "val_images_dict.json"),'r'))
-        # train_images = json.load(open("data/train_images_dict.json", 'r'))
-        # val_images=dict(train_images, **val_images)
-        image_collector=dict()
         count=0
-        exist=os.listdir("../CIN_panoptic_all")
+        exist=os.listdir("../CIN_panoptic_val")
         for image_id in val_images:
             try:
                 count+=1
@@ -137,23 +125,17 @@ def run(mode, config):
                 semantic_labels=result['semantic_segment']
                 panoptic_result=np.zeros(img.shape)
                 semantic_result=np.zeros(img.shape)
-                #stuff_result=np.zeros(img.shape)
-                #thing_result=np.zeros(img.shape)
                 information_collector={}
                 if 'stuff_class_ids' in result:
                     stuff_class_ids,stuff_boxes,stuff_masks=result['stuff_class_ids'],result['stuff_boxes'],result['stuff_masks']
                     for i,class_id in enumerate(stuff_class_ids):
                         category_id=class_dict[str(int(class_id))]['category_id']
                         category_name=class_dict[str(int(class_id))]['name']
-                        #print(category_name)
                         id,color = id_generator.get_id_and_color(str(category_id))
                         mask=stuff_masks[i]==1
                         panoptic_result[mask]=[int(color[0]),int(color[1]),int(color[2])]
-                        #stuff_result[mask]=color
                         semantic_result[mask]=[int(class_id),int(class_id),int(class_id)]
                         information_collector[str(id)]={"id":int(id),"bbox":[int(stuff_boxes[i][0]),int(stuff_boxes[i][1]),int(stuff_boxes[i][2]),int(stuff_boxes[i][3])],"category_id":int(category_id),"class_id":int(class_id),"category_name":category_name}
-                    #plt.figure()
-                    #plt.imshow(Image.fromarray(stuff_result.astype(np.uint8)))
                 if 'thing_class_ids' in result:
                     thing_class_ids, thing_boxes, thing_masks = result['thing_class_ids'], result['thing_boxes'], result['thing_masks']
                     for i,class_id in enumerate(thing_class_ids):
@@ -162,30 +144,22 @@ def run(mode, config):
                         id, color = id_generator.get_id_and_color(str(category_id))
                         mask=thing_masks[i]==1
                         panoptic_result[mask]=[int(color[0]),int(color[1]),int(color[2])]
-                        #thing_result[mask]=[int(color[0]),int(color[1]),int(color[2])]
                         semantic_result[mask]=[int(class_id),int(class_id),int(class_id)]
                         information_collector[str(id)]={"id": int(id), "bbox": [int(thing_boxes[i][0]),int(thing_boxes[i][1]),int(thing_boxes[i][2]),int(thing_boxes[i][3])], "category_id": int(category_id),"class_id":int(class_id),"category_name":category_name}
-                    #plt.figure()
-                    #plt.imshow(Image.fromarray(thing_result.astype(np.uint8)))
-                    #plt.show()
-                Image.fromarray(panoptic_result.astype(np.uint8)).save("../CIN_panoptic_all/" + image_name.replace(".jpg",".png"))
-                Image.fromarray(semantic_result.astype(np.uint8)).save("../CIN_semantic_all/" + image_name.replace(".jpg",".png"))
-                image_collector[str(int(image_id))]=information_collector
+                Image.fromarray(panoptic_result.astype(np.uint8)).save("../CIN_panoptic_val/" + image_name.replace(".jpg",".png"))
+                Image.fromarray(semantic_result.astype(np.uint8)).save("../CIN_semantic_val/" + image_name.replace(".jpg",".png"))
+                image['predictions']=information_collector
                 print(str(count)+"/"+str(len(val_images)))
             except Exception as e:
                 print("ERROR: "+image_name)
                 print(e)
-        json.dump(image_collector,open("data/ioi_CIN_panoptic_all.json",'w'))
+        map_instance_to_gt(val_images,"CIN_panoptic_val")
     elif mode=="p_interest":
         print("generate p_interest")
         model.load_weights(config.WEIGHT_PATH)
-        # model.load_part_weights("logs/PFPN_ooi_0034_maskrcnn.pth",mode="instance")
-        # model.load_part_weights("logs/CIN_ooi_0009_saliency.pth",mode="p_interest")
         val_images = json.load(open(os.path.join(config.JSON_PATH, "val_images_dict.json"), 'r'))
-        # train_images = json.load(open("data/train_images_dict.json", 'r'))
-        # val_images = dict(train_images, **val_images)
         count = 0
-        exist = os.listdir("../CIN_saliency_all")
+        exist = os.listdir("../CIN_saliency_val")
         for image_id in val_images:
             try:
                 count += 1
@@ -197,37 +171,30 @@ def run(mode, config):
                 img = skimage.io.imread(os.path.join(config.IMAGE_PATH, "ioid_images/"+image_name))
                 if len(img.shape)==2:
                     img = np.stack([img,img,img],axis=2)
-                influence_map = model.detect([img], limit="p_interest")
-                #plt.figure()
-                #plt.imshow(influence_map,cmap="gray")
-                #plt.show()
-                scipy.misc.toimage(influence_map, cmin=0, cmax=1).save("../CIN_saliency_all/" + image_name.replace(".jpg", ".png"))
+                influence_map = model.detect([img], limit="p_interest")[0]["influence_map"]
+                scipy.misc.toimage(influence_map, cmin=0, cmax=1).save("../CIN_saliency_val/" + image_name.replace(".jpg", ".png"))
                 print(str(count) + "/" + str(len(val_images)))
             except Exception as e:
                 print("ERROR: " + image_name)
                 print(e)
     elif mode=="selection":
-        # model.load_part_weights("logs/PFPN_ooi_0034_maskrcnn.pth",mode="instance")
-        # model.load_part_weights("logs/CIN_ooi_0009_saliency.pth",mode="p_interest")
-        # model.load_part_weights("logs/CIN_ooi_100_selection.pth",mode="selection")
         model.load_weights(config.WEIGHT_PATH)
         val_images=json.load(open(os.path.join(config.JSON_PATH, "val_images_dict.json"),'r'))
 
         CIEDN_pred_dict = {}
-
         count = 0
-
         for image_id in val_images:
             try:
                 print(image_id)
                 count+=1
+                print(str(count)+"/"+str(len(val_images)))
                 image = val_images[image_id]
                 image_name=image['image_name']
                 img=skimage.io.imread(os.path.join(config.IMAGE_PATH, "ioid_images/")+image_name)
                 if len(img.shape)==2:
                     img = np.stack([img,img,img],axis=2)
 
-                pred_dict,ioid_result=model.detect([img], limit="selection")
+                pred_dict,ioid_result,segments_info,panoptic_result_instance_id_map,prediction_list,instance_list=model.detect([img], limit="selection")
                 scipy.misc.imsave("results/CIEDN_pred/" + image_name.replace(".jpg", ".png"), ioid_result)
                 CIEDN_pred_dict[str(image_id)] = pred_dict
                 print("{}/{}".format(count,len(val_images)))
@@ -237,7 +204,7 @@ def run(mode, config):
         json.dump(CIEDN_pred_dict, open("results/CIEDN_pred_dict.json", 'w'))
 
     else:
-        pass
+        print("mode not exists")
 
 import sys
 if __name__=='__main__':

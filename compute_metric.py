@@ -19,7 +19,7 @@ def compare_mask(gt_data,predictions,a2, base):
     f_dict=dict()
     _recall_dict=dict()
     _f_dict=dict()
-    for threshold in np.arange(0.3,0.7,0.01):
+    for threshold in np.arange(0.3,0.91,0.01):
         prediction = np.where(predictions>threshold,1,0)
         TP[threshold] = np.sum(np.multiply(prediction, gt_data))
         TP_FP[threshold] = np.sum(prediction)
@@ -217,30 +217,5 @@ def write_csv(methods,result_file):
             #     writer.writerow(result_row)
 
 if __name__=="__main__":
-    saliency_train_model="CIN_saliency_all"
-    panoptic_train_model="CIN_panoptic_all"
-    # wait_compares=[saliency_train_model]#,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency',
-    #                # 'maskrcnn_panoptic','deeplab_panoptic']#,'../../../lstm/'+panoptic_train_model+'/'+saliency_train_model,'../../../only/'+panoptic_train_model+'/'+saliency_train_model]
-    # result={}
-    # a2=0.3# in np.arange(0.1, 3, 0.1):
-    # result[str(round(a2, 2))] = {}
-    # for wait_compare in wait_compares:
-    #     gt = np.load("results/ciedn_result/"+panoptic_train_model+"_"+saliency_train_model+"_gt.npy")
-    #     pred = maxminnorm(np.load("results/ciedn_result/"+panoptic_train_model+"_"+saliency_train_model+"_pred.npy"))
-    #     gt_to_pred = json.load(open("data/middle/ioi_instance_gt_pred_" + panoptic_train_model + ".json"))
-    #     base = 0
-    #     for image_id in gt_to_pred:
-    #         instance = gt_to_pred[image_id]
-    #         for instance_id in instance:
-    #             # print(instance[instance_id])
-    #             if instance[instance_id]['labeled'] == True and len(instance[instance_id]['pred']) == 0:
-    #                 base += 1
-    #     precision,recall,f,_recall,_f=compare_mask(gt,pred,a2,base)
-    #     result[str(round(a2,2))][wait_compare]={"precision":precision,"recall":recall,"f":f,"_recall":_recall,"_f":_f}
-    # result_file="results/result_com"
-    # json.dump(result,open(result_file+".json",'w'))
-    # write_csv(wait_compares,result_file)
-    wait_compares = ['CIN_saliency_all']
-    result = json.load(open("results/ciedn_result/CIN_panoptic_all_CIN_saliency_all_result.json", 'r'))
-    saliency_train_model = 'CIN_saliency_all'
-    draw_pictures(wait_compares,result,saliency_train_model)
+    saliency_train_model="CIN_saliency_val"
+    panoptic_train_model="CIN_panoptic_val"

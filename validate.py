@@ -2,7 +2,7 @@ import os
 import json
 import skimage.io
 import torch
-
+import scipy.misc
 
 import config
 from config import Config
@@ -10,7 +10,9 @@ from DatasetLib import OOIDataset,Dataset
 from torch.utils.data.dataloader import DataLoader as TorchDataLoader
 from torch.utils.data.dataloader import default_collate
 from torch.autograd import Variable
+from compute_metric import compare_mask
 from CIN import CIN
+from utils import utils
 import numpy as np
 
 import argparse
@@ -39,9 +41,20 @@ def get_parser():
                         help="the config file path")
     return parser
 
-def run(config):
+def maxminnorm(array):
+    max_value=np.max(array)
+    min_value=np.min(array)
+    newarray=(array-min_value)/(max_value-min_value)
+    return newarray
 
+def compute_pixel_iou(bool_mask_pred, bool_mask_gt):
+    intersection = bool_mask_pred * bool_mask_gt
+    union = bool_mask_pred + bool_mask_gt
+    return np.count_nonzero(intersection) / np.count_nonzero(union)
+
+def run(config):
     model = CIN(model_dir=MODEL_DIR, config=config)
+
     if config.GPU_COUNT:
         model = model.cuda()
 
@@ -52,116 +65,111 @@ def run(config):
             batch = [[torch.from_numpy(np.zeros([1, 1]))]]
         return default_collate(batch)
 
-    # state_dict_dir = os.path.join(MODEL_DIR, "CIN_ooi_all.pth")
     state_dict = torch.load(config.WEIGHT_PATH)
     model.load_state_dict(state_dict, strict=False)
+    for param in model.named_parameters():
+        param[1].requires_grad = False
 
-    val_dataset = OOIDataset('val')
-    val_set = Dataset(val_dataset, config)
-    val_generator = TorchDataLoader(val_set, collate_fn=my_collate_fn, batch_size=1, shuffle=True, num_workers=1)
+    gt_images_dict=json.load(open("data/val_images_dict.json"))
+    prediction_list=[]
+    gt_list=[]
+    base=0
+    step=0
+    for image_id in gt_images_dict:
+        step += 1
+        print(str(step) + "/" + str(len(gt_images_dict)))
 
-    step = 0
-    gt_list = []
-    prediction_list = []
-    for inputs in val_generator:
-        if len(inputs)!=17:
-            print(len(inputs))
-            continue
-        try:
-        # else:
-            images = inputs[0]
-            image_metas = inputs[1]
-            rpn_match = inputs[2]
-            rpn_bbox = inputs[3]
-            gt_class_ids = inputs[4]
-            gt_boxes = inputs[5]
-            gt_masks = inputs[6]
-            gt_stuff_class_ids = inputs[7]
-            gt_stuff_boxes = inputs[8]
-            gt_stuff_masks = inputs[9]
-            gt_semantic_label = inputs[10]
-            gt_influence_map = inputs[11]
-            gt_interest_class_ids = inputs[12]
-            gt_interest_boxes = inputs[13]
-            gt_interest_masks = inputs[14]
-            gt_segmentation = inputs[15]
-            gt_image_instances = inputs[16]
+        inner_prediction_list=[]
+        inner_gt_list=[]
 
-            # image_metas as numpy array
-            image_metas = image_metas.numpy()
+        image = gt_images_dict[image_id]
+        gt_instance_dict=image['instances']
+        image_name = image['image_name']
+        img = skimage.io.imread(os.path.join(config.IMAGE_PATH, "ioid_images/") + image_name)
+        if len(img.shape) == 2:
+            img = np.stack([img, img, img], axis=2)
 
-            # Wrap in variables
-            with torch.no_grad():
-                images = Variable(images)
-                rpn_match = Variable(rpn_match)
-                rpn_bbox = Variable(rpn_bbox)
-                gt_class_ids = Variable(gt_class_ids)
-                gt_boxes = Variable(gt_boxes)
-                gt_masks = Variable(gt_masks)
-                gt_stuff_class_ids = Variable(gt_stuff_class_ids)
-                gt_stuff_boxes = Variable(gt_stuff_boxes)
-                gt_stuff_masks = Variable(gt_stuff_masks)
-                gt_semantic_label = Variable(gt_semantic_label)
-                gt_influence_map = Variable(gt_influence_map)
-                gt_interest_class_ids = Variable(gt_interest_class_ids)
-                gt_interest_boxes = Variable(gt_interest_boxes)
-                gt_interest_masks = Variable(gt_interest_masks)
-                gt_segmentation = Variable(gt_segmentation)
+        pred_dict, ioid_result, instance_dict,panoptic_result_instance_id_map, predictions, instance_list = model.detect([img], limit="selection")
+        inner_prediction_list=predictions
 
-            # To GPU
-            if config.GPU_COUNT:
-                images = images.cuda()
-                rpn_match = rpn_match.cuda()
-                rpn_bbox = rpn_bbox.cuda()
-                gt_class_ids = gt_class_ids.cuda()
-                gt_boxes = gt_boxes.cuda()
-                gt_masks = gt_masks.cuda()
-                gt_stuff_class_ids = gt_stuff_class_ids.cuda()
-                gt_stuff_boxes = gt_stuff_boxes.cuda()
-                gt_stuff_masks = gt_stuff_masks.cuda()
-                gt_semantic_label = gt_semantic_label.cuda()
-                gt_influence_map = gt_influence_map.cuda()
-                gt_interest_class_ids = gt_interest_class_ids.cuda()
-                gt_interest_boxes = gt_interest_boxes.cuda()
-                gt_interest_masks = gt_interest_masks.cuda()
-                gt_segmentation = gt_segmentation.cuda()
+        for instance_id in instance_dict:
+            mask = panoptic_result_instance_id_map == int(instance_id)
+            instance_dict[instance_id]['mask'] = mask
 
-            predict_input = [images, image_metas, gt_class_ids, gt_boxes, gt_masks, gt_segmentation, gt_image_instances]
-            # predictions, segments_info = model.predict_front(predict_input, mode="inference", limit="selection")
-            for param in model.named_parameters():
-                param[1].requires_grad=False
-                # print(param[0] + " " + str(param[1].shape) + " " + str(param[1].requires_grad))
-            predictions, pair_label, labels = model.predict_front(predict_input, mode="training", limit="selection")
-            if self.config.GPU_COUNT:
-                predictions = predictions.data.cpu().numpy()
-                labels = labels.data.cpu().numpy().squeeze(0)
+        gt_segmentation_id = utils.rgb2id(scipy.misc.imread("../data/ioid_panoptic/" + image_id.zfill(12) + ".png"))
+        for gt_instance_id in gt_instance_dict:
+            gt_mask = gt_segmentation_id == int(gt_instance_id)
+            gt_instance_dict[gt_instance_id]['mask'] = gt_mask
+
+        instance_pred_gt_dict = {}
+        instance_gt_pred_dict = {}
+        if len(instance_dict) == 0:
+            for gt_instance_id in gt_instance_dict:
+                instance_gt_pred_dict[gt_instance_id] = {"labeled": gt_instance_dict[gt_instance_id]['labeled'],"pred": []}
+        else:
+            for instance_id in instance_dict:
+                max_iou = -1
+                max_gt_instance_id = ""
+                for gt_instance_id in gt_instance_dict:
+                    i_iou = compute_pixel_iou(instance_dict[instance_id]['mask'],gt_instance_dict[gt_instance_id]['mask'])
+                    if gt_instance_id not in instance_gt_pred_dict:
+                        instance_gt_pred_dict[gt_instance_id] = {"labeled": gt_instance_dict[gt_instance_id]['labeled'],
+                                                                 "pred": []}
+                    if i_iou >= 0.5 and instance_dict[instance_id]['category_id'] == gt_instance_dict[gt_instance_id][
+                        'category_id'] and i_iou > max_iou:
+                        max_gt_instance_id = gt_instance_id
+                        max_iou = i_iou
+                        instance_gt_pred_dict[gt_instance_id]['pred'].append(instance_id)
+                if max_gt_instance_id != "":
+                    instance_pred_gt_dict[instance_id] = {"gt_instance_id": max_gt_instance_id,
+                                                          "label": gt_instance_dict[max_gt_instance_id]['labeled']}
+                else:
+                    instance_pred_gt_dict[instance_id] = {"gt_instance_id": "", "label": False}
+
+        image_base = 0
+        for instance_id in instance_gt_pred_dict:
+            if instance_gt_pred_dict[instance_id]['labeled'] == True and len(instance_gt_pred_dict[instance_id]['pred']) == 0:
+                image_base += 1
+        base+=image_base
+
+        for instance_id in instance_dict:
+            del instance_dict[instance_id]['mask']
+
+        for gt_instance_id in gt_instance_dict:
+            del gt_instance_dict[gt_instance_id]['mask']
+
+        for instance_id in instance_dict:
+            instance = instance_dict[instance_id]
+            if instance_id in instance_pred_gt_dict:
+                instance['labeled'] = instance_pred_gt_dict[instance_id]['label']
             else:
-                predictions = predictions.data.numpy()
-                labels = labels.data.numpy().squeeze(0)
-            num = len(labels)
-            gt_list_item = []
-            prediction_list_item = []
-            for i in range(0, num):
-                avg = np.sum(predictions[i*num: (i+1)*num])/num
-                prediction_list.append(avg)
-                prediction_list_item.append(avg)
+                instance['labeled'] = False
 
-            gt_list_item.extend(labels)
-            gt_list.extend(labels)
+        for instance_id in instance_list:
+            inner_gt_list.append(1 if instance_dict[instance_id]['labeled'] else 0)
 
-            step += 1
-            gt_list_item = np.array(gt_list_item)
-            prediction_list_item = np.array(prediction_list_item)
-            precision, recall, f = compare_mask_wih_a2_and_threshold(gt_list_item, prediction_list_item, config.SELECTION_THRESHOLD+0.05)
-            print(step, precision, recall,f)
-        except Exception as e:
-            print("Error - " + str(step))
-            print(e)
+        prediction_list.extend(inner_prediction_list)
+        gt_list.extend(inner_gt_list)
+
+        pl=maxminnorm(np.array(prediction_list))
+        gl=np.array(gt_list)
+        pl=np.where(pl > 0.4, 1, 0)
+
+        TP = np.sum(np.multiply(pl, gl))
+        TP_FP = np.sum(pl)
+        TP_FN = np.sum(gl)
+        precision = TP / TP_FP
+        recall = TP / TP_FN
+        recall_ = TP / (TP_FN + base)
+        f=precision/recall
+        f_=precision/recall_
+        print("base: "+str(base)+"  precision: "+str(precision)+"  recall: " + str(recall_)+"  f: " + str(f_)+"  recall*: " + str(recall)+"  f*: " + str(f))
 
     predition_list = np.array(prediction_list)
     gt_list = np.array(gt_list)
     np.save("results/validate/gt.npy", gt_list)
     np.save("results/validate/pred.npy", prediction_list)
+
 
 if __name__=='__main__':
     args = get_parser().parse_args()
@@ -174,3 +182,11 @@ if __name__=='__main__':
     else:
         config = CINConfig()
     run(config)
+    # gt=np.load("results/validate/gt.npy")
+    # pred=np.nan_to_num(np.load("results/validate/pred.npy"))
+    # precision, recall, f, _recall, _f =compare_mask(gt,pred,0.3,16046)
+    # print(precision['0.8'])
+    # print(recall['0.8'])
+    # print(f['0.8'])
+    # print(_recall['0.8'])
+    # print(_f['0.8'] )

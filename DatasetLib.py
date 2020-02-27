@@ -38,8 +38,7 @@ def load_image_gt(dataset, config, image_id, augment=False, use_mini_mask=False)
         padding=config.IMAGE_PADDING)
     image_meta = compose_image_meta(image_id, shape, window)
 
-    thing_mask, thing_class_ids, stuff_mask, stuff_class_ids, influence_mask, influence_class_ids = dataset.load_mask(
-        image_id)
+    thing_mask, thing_class_ids, stuff_mask, stuff_class_ids, influence_mask, influence_class_ids = dataset.load_mask(image_id)
     thing_mask = resize_mask(thing_mask, scale, padding)  # 1024
     stuff_mask = resize_mask(stuff_mask, scale, padding)  # 1024
     influence_mask = resize_mask(influence_mask, scale, padding)  # 1024
@@ -55,14 +54,8 @@ def load_image_gt(dataset, config, image_id, augment=False, use_mini_mask=False)
         stuff_mask = minimize_mask(
             stuff_bbox, stuff_mask, config.MINI_MASK_SHAPE)
 
-    # semantic_label = np.load("../panoptic_ioi_stuff/"+image_name.replace("jpg","png.npy"))
-    # semantic_label = skimage.io.imread(
-    #     "../panoptic_ioi/" + image_name.replace("jpg", "png"))
     segmentation = skimage.io.imread(os.path.join(dataset.annotation_dir, image_name.replace("jpg", "png")))
-    # print(segmentation.shape)
-    # plt.figure()
-    # plt.imshow(segmentation)
-    # plt.show()
+
     semantic_label = np.zeros_like(segmentation)
     segmentation_instance_id_map=rgb2id(segmentation)
     instance_id_list=list(dataset.image_info[str(image_id)]['instances'].keys())
@@ -230,8 +223,6 @@ class Dataset(TorchDataset):
                                                 config.RPN_ANCHOR_STRIDE)
 
     def __getitem__(self, image_index):
-        # def __getitem__(self, image_id):
-        # Get GT bounding boxes and masks for image.
         # try:
             image_id = self.image_ids[image_index]
             image, image_metas, gt_thing_class_ids, gt_thing_boxes, gt_thing_masks, \
@@ -240,8 +231,8 @@ class Dataset(TorchDataset):
                 load_image_gt(self.dataset, self.config, image_id,
                               augment=self.augment, use_mini_mask=self.config.USE_MINI_MASK)
 
-            if gt_thing_class_ids.shape[0] == 0 or gt_stuff_class_ids.shape[0] == 0 or gt_influence_class_ids.shape[
-                0] == 0:
+            if gt_thing_class_ids.shape[0] == 0 or gt_stuff_class_ids.shape[0] == 0 or gt_influence_class_ids.shape[0] == 0:
+                print(str(image_id)+" error")
                 return None
 
             # RPN Targets
@@ -529,33 +520,30 @@ if __name__ == '__main__':
 
 
     config = CINConfig()
-    dataset_train = OOIDataset("train")
-    train_set = Dataset(dataset_train, config)
-    train_set.__getitem__(5)
-    train_set.__getitem__(20)
+    dataset_val = OOIDataset("val")
+    val_set = Dataset(dataset_val, config)
+    # train_set.__getitem__(5)
+    # train_set.__getitem__(20)
     # print("dataset_train", dataset_train.num_images)
     # print("train_set", train_set.__len__())
     #
-    # def my_collate_fn(batch):
-    #     batch = list(filter(lambda x: x is not None, batch))
-    #     if len(batch) == 0:
-    #         print("No valid data!!!")
-    #         batch = [[torch.from_numpy(np.zeros([1, 1]))]]
-    #     return default_collate(batch)
-    #
-    # train_generator = TorchDataLoader(
-    #     train_set, collate_fn=my_collate_fn, batch_size=1, shuffle=True, num_workers=1)
-    # for inputs in train_generator:
-    #     if len(inputs) != 17:
-    #         continue
-    #     gt_interest_masks = inputs[14]
-    #     gt_segmentation = inputs[15]
-    #     gt_image_instances = inputs[16]
-    #     print(len(inputs))
-    #     print("gt_interest_masks",type(gt_interest_masks), gt_interest_masks.shape)
-    #     print("gt_segmentation",type(gt_segmentation), gt_segmentation.shape)
-    #     print("gt_image_instances", type(gt_image_instances), gt_image_instances)
-    #     break
+    def my_collate_fn(batch):
+        batch = list(filter(lambda x: x is not None, batch))
+        if len(batch) == 0:
+            print("No valid data!!!")
+            batch = [[torch.from_numpy(np.zeros([1, 1]))]]
+        return default_collate(batch)
+
+    val_generator = TorchDataLoader(val_set, collate_fn=my_collate_fn, batch_size=1, shuffle=True, num_workers=1)
+    step = 0
+    for inputs in val_generator:
+        if len(inputs) != 17:
+            print("length of inputs", len(inputs))
+            print("inputs", inputs)
+            continue
+        print(str(step)+"/9000")
+        step+=1
+
     '''
     result=load_image_gt(ooiDataset,OISMPSConfig(),9,True,True)
     thing_masks=result[4]

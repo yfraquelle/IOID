@@ -297,6 +297,9 @@ def filter_thing_masks(thing_detections,mrcnn_mask,image_shape,window):
 
     #resize
     thing_masks_unmold = []
+    final_thing_class_ids = []
+    final_thing_boxes = []
+    final_thing_scores = []
     for i in range(thing_class_ids.shape[0]):
         threshold = 0.5
         y1, x1, y2, x2 = thing_boxes[i].astype(np.int32)
@@ -305,9 +308,17 @@ def filter_thing_masks(thing_detections,mrcnn_mask,image_shape,window):
         mask = np.where(mask >= threshold, 1, 0).astype(np.uint8)
         full_image = np.zeros(image_shape[:2], dtype=np.uint8)
         full_image[y1:y2,x1:x2]=mask
-        thing_masks_unmold.append(full_image)
+        thing_box=utils.extract_bbox(full_image)
+        if (thing_box[2]-thing_box[0])*(thing_box[3]-thing_box[1])>0:
+            final_thing_class_ids.append(thing_class_ids[i])
+            final_thing_boxes.append(thing_box)
+            thing_masks_unmold.append(full_image)
+            final_thing_scores=thing_scores[i]
     thing_masks_unmold=np.stack(thing_masks_unmold)
-    return thing_class_ids,thing_boxes,thing_masks_unmold,thing_scores
+    final_thing_class_ids=np.array(final_thing_class_ids)
+    final_thing_boxes=np.stack(final_thing_boxes)
+    final_thing_scores=np.array(final_thing_scores)
+    return final_thing_class_ids,final_thing_boxes,thing_masks_unmold,final_thing_scores
 
 def filter_stuff_masks(stuff_detections,stuff_masks,image_shape,window):
     if(stuff_detections.shape[0] == 0 and stuff_masks.shape[0] == 0):
@@ -318,24 +329,27 @@ def filter_stuff_masks(stuff_detections,stuff_masks,image_shape,window):
     stuff_class_ids=stuff_detections[:,4:5]
     stuff_boxes=stuff_detections[:,:4]
 
-    h_scale = image_shape[0] / (window[2] - window[0]) # h_ori_image/h_box_image
-    w_scale = image_shape[1] / (window[3] - window[1]) # w_ori_image/w_box_image
-    box_scale = min(h_scale, w_scale)
-    shifts = np.array([window[0], window[1], window[0], window[1]])
-    scales = np.array([box_scale, box_scale, box_scale, box_scale])
-    stuff_boxes = np.multiply(stuff_boxes * 1024 / 500 - shifts, scales)
-
     h, w = image_shape[:2]
-    mask_scale = max(h,w)/500
-    stuff_masks=scipy.ndimage.zoom(stuff_masks, zoom=[1, mask_scale, mask_scale], order=0)
+    mask_scale = max(h,w)/500.0
     top_pad = (max(h,w) - h) // 2
     left_pad = (max(h,w) - w) // 2
+    shifts = np.array([top_pad, left_pad, top_pad, left_pad])
+    stuff_boxes = stuff_boxes * mask_scale - shifts#np.multiply(, scales)
+    stuff_masks=scipy.ndimage.zoom(stuff_masks, zoom=[1, mask_scale, mask_scale], order=0)
     stuff_masks_umold=[]
+    final_stuff_class_ids = []
+    final_stuff_boxes = []
     for i in range(stuff_class_ids.shape[0]):
         stuff_mask=stuff_masks[i][top_pad:h+top_pad,left_pad:w+left_pad]
-        stuff_masks_umold.append(stuff_mask)
+        stuff_box=utils.extract_bbox(stuff_mask)
+        if (stuff_box[2]-stuff_box[0])*(stuff_box[3]-stuff_box[1])>0:
+            final_stuff_class_ids.append(stuff_class_ids[i])
+            final_stuff_boxes.append(stuff_box)
+            stuff_masks_umold.append(stuff_mask)
     stuff_masks_umold=np.stack(stuff_masks_umold)
-    return stuff_class_ids,stuff_boxes,stuff_masks_umold
+    final_stuff_class_ids=np.array(final_stuff_class_ids)
+    final_stuff_boxes=np.stack(final_stuff_boxes)
+    return final_stuff_class_ids,final_stuff_boxes,stuff_masks_umold
 
 def resize_influence_map(influence_map,new_shape):
     return scipy.misc.imresize(influence_map, new_shape, interp='bilinear')

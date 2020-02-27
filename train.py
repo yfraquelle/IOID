@@ -30,7 +30,7 @@ class CINConfig(Config):
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--setting", type=str,
-                        default=[('semantic', 0.01, 30), ('p_interest', 0.01, 10), ('selection', 0.01, 100), ('all', 0.001, 10)],
+                        default=None,
                         help="the path of the settings in the training process")
     parser.add_argument("--config", type=str,
                         default="configs/train_config.yaml",
@@ -42,17 +42,8 @@ def run(settings, config):
     if config.GPU_COUNT:
         model = model.cuda()
 
-    #RECENT_MODEL_PATH = model.find_last()[1]
-    #print(RECENT_MODEL_PATH)
-    # if RECENT_MODEL_PATH is None:
-    #    model.load_weights(IMAGENET_MODEL_PATH)
-    # else:
-    #    model.load_weights(RECENT_MODEL_PATH)
     model.load_from_maskrcnn()
-    # model.load_part_weights("logs/PFPN_ooi_0034_maskrcnn.pth",mode="instance")
-    # model.load_part_weights("logs/CIN_ooi_0009_saliency.pth", mode="p_interest")
-    model.load_weights(config.WEIGHT_PATH)
-    # model.load_weights("logs/CIN_ooi_all.pth")
+    # model.load_weights(config.WEIGHT_PATH)
     dataset_train = OOIDataset("train")
     dataset_val = OOIDataset("val")
 
@@ -69,7 +60,7 @@ def run(settings, config):
     #                   layers='selection')
 
 if __name__=='__main__':
-    settings = [('semantic', 0.01, 30), ('p_interest', 0.01, 10), ('selection', 0.001, 100)]
+    settings = [('semantic', 0.01, 34), ('p_interest', 0.01, 44), ('selection', 0.001, 144)]
     args = get_parser().parse_args()
     if args.setting:
         settings_str = args.setting[1:-1]

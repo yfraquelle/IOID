@@ -9,60 +9,52 @@ from matplotlib import pyplot as plt
 import multiprocessing
 from PIL import Image
 
-def extract_json_from_panoptic_semantic(segmentation_model,semantic_model):
-    images_png = []
-    val_images_dict = json.load(open("data/val_images_dict.json"))
-    for val_image_id in val_images_dict:
-        images_png.append(val_images_dict[val_image_id]['image_name'].replace('jpg', 'png'))
-
+def generate_images_dict(panoptic_model):
     class_id_dict=json.load(open("data/class_dict.json",'r'))
-    instance_panoptic_all={}
+    val_dict=json.load(open("data/val_images_dict.json",'r'))
     count=0
-    for image_png in images_png:
+    for image_id in val_dict:
         count+=1
-        try:
-            semantic = skimage.io.imread("../"+semantic_model+"/"+image_png)
-            panoptic = skimage.io.imread("../"+segmentation_model+"/"+image_png)
-            segmentation_id = utils.rgb2id(panoptic)
-            segmentation_id_list=np.unique(segmentation_id)
-            instances={}
-            for instance_id in segmentation_id_list:
-                mask = np.where(segmentation_id == instance_id, 1, 0)
-                if np.sum(mask)==0:
-                    continue
-                box=utils.extract_bbox(mask)
-                class_id = np.unique(semantic[segmentation_id == instance_id])[0]
-                category = class_id_dict[str(class_id)]
-                instances[str(instance_id)]={'id':int(instance_id),'class_id':int(class_id),'category_id':category['category_id'],'category_name':category['name'],'bbox':[int(box[0]),int(box[1]),int(box[2]),int(box[3])]}
-            instance_panoptic_all[image_png[:-4].lstrip("0")]=instances
-            print("extract_json_from_panoptic_semantic:" + str(count) + "/" + str(len(images_png)))
-        except Exception as e:
-            print(image_png)
-            print(e)
-    json.dump(instance_panoptic_all,open("data/middle/ioi_"+segmentation_model+".json",'w'))
+        image_info=val_dict[image_id]
+        print(str(count)+"/"+str(len(val_dict)))
+        semantic = skimage.io.imread("../"+panoptic_model.replace("panoptic","semantic")+"/"+image_info['image_name'].replace("jpg","png"))
+        panoptic = skimage.io.imread("../"+panoptic_model+"/"+image_info['image_name'].replace("jpg","png"))
+        segmentation_id = utils.rgb2id(panoptic)
+        segmentation_id_list=np.unique(segmentation_id)
+        instances={}
+        for instance_id in segmentation_id_list:
+            if instance_id==0:
+                continue
+            mask = np.where(segmentation_id == instance_id, 1, 0)
+            if np.sum(mask)==0:
+                print(image_png+" "+str(instance_id))
+                continue
+            box=utils.extract_bbox(mask)
+            class_id = np.unique(semantic[segmentation_id == instance_id])[0]
+            category = class_id_dict[str(class_id)]
+            instances[str(instance_id)]={'id':int(instance_id),'class_id':int(class_id),'category_id':category['category_id'],'category_name':category['name'],'bbox':[int(box[0]),int(box[1]),int(box[2]),int(box[3])]}
+        image_info['predictions']=instances
+    map_instance_to_gt(val_dict,panoptic_model)
 
-def map_instance_to_gt(segmentation_model):
+def map_instance_to_gt(val_images,save_name):
     def compute_pixel_iou(bool_mask_pred, bool_mask_gt):
         intersection = bool_mask_pred * bool_mask_gt
         union = bool_mask_pred + bool_mask_gt
         return np.count_nonzero(intersection) / np.count_nonzero(union)
 
-    gt_val_image_instances = json.load(open('data/val_images_dict.json', 'r'))
-    image_instances = json.load(open("data/middle/ioi_"+segmentation_model+".json", 'r'))
-    instance_pred_gt_dict = {}
-    instance_gt_pred_dict = {}
+    ioi_val_images_dict = {}
     count = 0
-    for image_id in image_instances:
+    base = 0
+    for image_id in val_images:
         count += 1
-        print("map_instance_to_gt:"+str(count) + "/" + str(len(image_instances)))
-        instance_pred_gt_dict[image_id] = {}
-        instance_gt_pred_dict[image_id] = defaultdict(list)
+        print("map_instance_to_gt:"+str(count) + "/" + str(len(val_images)))
 
-        segmentation = scipy.misc.imread("../"+segmentation_model+"/" + image_id.zfill(12) + ".png")
-        gt_segmentation = scipy.misc.imread(
-            "../data/ioid_panoptic/" + image_id.zfill(12) + ".png")
-        instance_dict = image_instances[image_id]
-        gt_instance_dict = gt_val_image_instances[image_id]['instances']
+        segmentation = scipy.misc.imread("../"+save_name+"/" + image_id.zfill(12) + ".png")
+        gt_segmentation = scipy.misc.imread("../data/ioid_panoptic/" + image_id.zfill(12) + ".png")
+
+        image_info=val_images[image_id]
+        instance_dict = image_info['predictions']
+        gt_instance_dict = image_info['instances']
 
         segmentation_id = utils.rgb2id(segmentation)
         for instance_id in instance_dict:
@@ -74,137 +66,52 @@ def map_instance_to_gt(segmentation_model):
             gt_mask = gt_segmentation_id == int(gt_instance_id)
             gt_instance_dict[gt_instance_id]['mask'] = gt_mask
 
-        for instance_id in instance_dict:
-            max_iou = -1
-            max_gt_instance_id = ""
+        instance_pred_gt_dict = {}
+        instance_gt_pred_dict = {}
+        if len(instance_dict)==0:
             for gt_instance_id in gt_instance_dict:
-                i_iou = compute_pixel_iou(instance_dict[instance_id]['mask'], gt_instance_dict[gt_instance_id]['mask'])
-                if gt_instance_id not in instance_gt_pred_dict[image_id]:
-                    instance_gt_pred_dict[image_id][gt_instance_id] = {
-                        "labeled": gt_instance_dict[gt_instance_id]['labeled'], "pred": []}
-                if i_iou >= 0.5 and instance_dict[instance_id]['category_id'] == gt_instance_dict[gt_instance_id][
-                    'category_id'] and i_iou > max_iou:
-                    max_gt_instance_id = gt_instance_id
-                    max_iou = i_iou
-                    instance_gt_pred_dict[image_id][gt_instance_id]['pred'].append(instance_id)
-            if max_gt_instance_id != "":
-                instance_pred_gt_dict[image_id][instance_id] = {"gt_instance_id": max_gt_instance_id,
-                                                                "label": gt_instance_dict[max_gt_instance_id][
-                                                                    'labeled']}
-            else:
-                instance_pred_gt_dict[image_id][instance_id] = {"gt_instance_id": "", "label": False}
+                instance_gt_pred_dict[gt_instance_id] = {"labeled": gt_instance_dict[gt_instance_id]['labeled'],"pred": []}
+        else:
+            for instance_id in instance_dict:
+                max_iou = -1
+                max_gt_instance_id = ""
+                for gt_instance_id in gt_instance_dict:
+                    i_iou = compute_pixel_iou(instance_dict[instance_id]['mask'], gt_instance_dict[gt_instance_id]['mask'])
+                    if gt_instance_id not in instance_gt_pred_dict:
+                        instance_gt_pred_dict[gt_instance_id] = {"labeled": gt_instance_dict[gt_instance_id]['labeled'], "pred": []}
+                    if i_iou >= 0.5 and instance_dict[instance_id]['category_id'] == gt_instance_dict[gt_instance_id]['category_id'] and i_iou > max_iou:
+                        max_gt_instance_id = gt_instance_id
+                        max_iou = i_iou
+                        instance_gt_pred_dict[gt_instance_id]['pred'].append(instance_id)
+                if max_gt_instance_id != "":
+                    instance_pred_gt_dict[instance_id] = {"gt_instance_id": max_gt_instance_id,"label": gt_instance_dict[max_gt_instance_id]['labeled']}
+                else:
+                    instance_pred_gt_dict[instance_id] = {"gt_instance_id": "", "label": False}
+
+        base = 0
+        for instance_id in instance_gt_pred_dict:
+            if instance_gt_pred_dict[instance_id]['labeled'] == True and len(instance_gt_pred_dict[instance_id]['pred']) == 0:
+                base += 1
 
         for instance_id in instance_dict:
-            instance_dict[instance_id]['mask'] = ""
+            del instance_dict[instance_id]['mask']
 
         for gt_instance_id in gt_instance_dict:
-            gt_instance_dict[gt_instance_id]['mask'] = ""
+            del gt_instance_dict[gt_instance_id]['mask']
 
-    json.dump(instance_pred_gt_dict, open("data/middle/ioi_instance_pred_gt_"+segmentation_model+".json", 'w'))
-    json.dump(instance_gt_pred_dict, open("data/middle/ioi_instance_gt_pred_"+segmentation_model+".json", 'w'))
 
-def generate_image_dict(segmentation_model):
-    pred_to_gt = json.load(open("data/middle/ioi_instance_pred_gt_" + segmentation_model + ".json", 'r'))
-    val_dict = json.load(open("data/middle/ioi_" + segmentation_model + ".json", 'r'))
-    # train_gt_images = json.load(open("data/train_images_dict.json", 'r'))
-    val_gt_images = json.load(open("data/val_images_dict.json", 'r'))
-    # val_gt_images = dict(train_gt_images, **val_gt_images)
-    ioi_val_images_id = list(val_gt_images.keys())
-    ioi_val_images_dict = {}
-    print("pred to gt length", len(pred_to_gt))
-    for image_id in val_dict:
-        segments_info = val_dict[image_id]
-        image_info = val_gt_images[image_id]
-        for instance_id in segments_info:
-            if instance_id == "0":
-                pass
-            instance = segments_info[instance_id]
-            if instance_id in pred_to_gt[image_id]:
-                instance['labeled'] = pred_to_gt[image_id][instance_id]['label']
-        if image_id in ioi_val_images_id:
-            ioi_val_images_dict[image_id] = {"image_id": image_info['image_id'],
-                                             "image_name": image_info['image_name'],
-                                             "height": image_info['height'], "width": image_info['width'],
-                                             'segments_info': segments_info}
-    json.dump(ioi_val_images_dict, open("data/middle/ioi_val_images_dict_" + segmentation_model + ".json", 'w'))
+        for instance_id in instance_dict:
+            instance = instance_dict[instance_id]
+            if instance_id in instance_pred_gt_dict:
+                instance['labeled'] = instance_pred_gt_dict[instance_id]['label']
+            else:
+                instance['labeled'] = False
 
-    # for image_id in val_gt_images:
-    #     image_info = val_gt_images[image_id]
-    #     segments_info = val_dict[image_id]
-    #     for instance_id in segments_info:
-    #         if instance_id == "0":
-    #             pass
-    #         instance = segments_info[instance_id]
-    #         if instance_id in pred_to_gt[image_id]:
-    #             instance['labeled'] = pred_to_gt[image_id][instance_id]['label']
-    #     if image_id in ioi_val_images_id:
-    #         ioi_val_images_dict[image_id] = {"image_id": image_info['image_id'],
-    #                                          "image_name": image_info['image_name'],
-    #                                          "height": image_info['height'], "width": image_info['width'],
-    #                                          'segments_info': segments_info}
-    # json.dump(ioi_val_images_dict, open("data/middle/ioi_val_images_dict_"+segmentation_model+".json", 'w'))
+        ioi_val_images_dict[image_id] = {"image_id": image_info['image_id'], "image_name": image_info['image_name'],
+                                         "base":base, "height": image_info['height'], "width": image_info['width'],
+                                         'segments_info': instance_dict}
 
-def split_dataset(segmentation_model):
-    pred_to_gt=json.load(open("data/middle/ioi_instance_pred_gt_"+segmentation_model+".json",'r'))
-    all_dict=json.load(open("data/middle/ioi_"+segmentation_model+".json",'r'))
-    train_gt_images = json.load(open("data/train_images_dict.json", 'r'))
-    val_gt_images = json.load(open("data/val_images_dict.json", 'r'))
-    all_gt_images = dict(train_gt_images, **val_gt_images)
-    ioi_val_images_png=[]
-    for val_image_id in val_gt_images:
-        ioi_val_images_png.append(val_gt_images[val_image_id]['image_name'].replace('jpg','png'))
-    ioi_train_images_png=[]
-    ioi_val_images_id=[int(name[:-4].lstrip()) for name in ioi_val_images_png]
-    ioi_train_images_id=[]
-    ioi_val_images_dict={}
-    ioi_train_images_dict={}
-    for image_id in all_dict:
-        image_info=all_gt_images[image_id]
-        segments_info=all_dict[image_id]
-        for instance_id in segments_info:
-            if instance_id=="0":
-                pass
-            instance=segments_info[instance_id]
-            if instance_id in pred_to_gt[image_id]:
-                instance['labeled'] = pred_to_gt[image_id][instance_id]['label']
-        if int(image_id) in ioi_val_images_id:
-            ioi_val_images_dict[image_id] = {"image_id": image_info['image_id'], "image_name": image_info['image_name'],
-                                             "height": image_info['height'], "width": image_info['width'],
-                                             'segments_info': segments_info}
-        else:
-            ioi_train_images_png.append(image_info['image_name'].replace(".jpg",".png"))
-            ioi_train_images_id.append(image_id)
-            ioi_train_images_dict[image_id] = {"image_id": image_info['image_id'], "image_name": image_info['image_name'],
-                                               "height": image_info['height'],"width": image_info['width'],
-                                               'segments_info': segments_info}
-    json.dump(ioi_val_images_id,open("data/middle/ioi_val_images_id_"+segmentation_model+".json",'w'))
-    json.dump(ioi_train_images_id,open("data/middle/ioi_train_images_id_"+segmentation_model+".json",'w'))
-    json.dump(ioi_val_images_png, open("data/middle/ioi_val_images_png_" + segmentation_model + ".json", 'w'))
-    json.dump(ioi_train_images_png, open("data/middle/ioi_train_images_png_"+segmentation_model+".json", 'w'))
-    json.dump(ioi_val_images_dict,open("data/middle/ioi_val_images_dict_"+segmentation_model+".json",'w'))
-    json.dump(ioi_train_images_dict,open("data/middle/ioi_train_images_dict_"+segmentation_model+".json",'w'))
-    json.dump(dict(ioi_train_images_dict, **ioi_val_images_dict ),open("data/middle/ioi_all_images_dict_"+segmentation_model+".json",'w'))
-
-def filter_by_saliency(segmentation_model,saliency_model):
-    saliency_images=os.listdir("../"+saliency_model)
-    try:
-        train=json.load(open("data/middle/ioi_train_images_dict_"+segmentation_model+".json",'r'))
-        exist_train=dict()
-        for image_id in train:
-            if train[image_id]['image_name'].replace(".jpg",".png") in saliency_images:
-                exist_train[image_id]=train[image_id]
-        json.dump(exist_train,open("data/middle/ioi_train_images_dict_"+segmentation_model+"_"+saliency_model+".json",'w'))
-        print("filter_by_saliency:"+str(len(exist_train))+"/"+str(len(train)))
-    except:
-        print("no train data")
-    val=json.load(open("data/middle/ioi_val_images_dict_"+segmentation_model+".json",'r'))
-    exist_val=dict()
-    for image_id in val:
-        if val[image_id]['image_name'].replace(".jpg",".png") in saliency_images:
-            exist_val[image_id]=val[image_id]
-    json.dump(exist_val,open("data/middle/ioi_val_images_dict_"+segmentation_model+"_"+saliency_model+".json",'w'))
-    # print("data/middle/ioi_val_images_dict_"+segmentation_model+".json")
-    print("filter_by_saliency:"+str(len(exist_val))+"/"+str(len(val)))
+    json.dump(ioi_val_images_dict, open("results/ioi_"+save_name+".json", 'w'))
 
 def compute_instance_saliency(segmentation_model,saliency_model):
     try:
@@ -320,22 +227,6 @@ def run_proc(begin, end, results_file, images_dict, segmentation_model,saliency_
 import sys
 
 if __name__=='__main__':
-    segmentation_model = "CIN_panoptic"
-    semantic_model = "CIN_semantic"
-    saliency_model = "CIN_saliency"
-    extract_json_from_panoptic_semantic(segmentation_model,semantic_model)
-    map_instance_to_gt(segmentation_model)
-    split_dataset(segmentation_model)
-    # filter_by_saliency(segmentation_model, saliency_model)
-    # compute_instance_saliency(segmentation_model, saliency_model)
-    for segmentation in ['deeplab_panoptic','maskrcnn_panoptic',]:
-        segmentation = segmentation.replace("deeplab", "stuff")
-        segmentation = segmentation.replace("maskrcnn", "thing")
-        extract_json_from_panoptic_semantic(segmentation, segmentation.replace("panoptic","semantic"))
-        map_instance_to_gt(segmentation)
-        generate_image_dict(segmentation)
-        # filter_by_saliency(segmentation, saliency_model)
-    # compute_instance_saliency_list(segmentation_model,saliency_model, \
-    #                                ['a-PyTorch-Tutorial-to-Image-Captioning_saiency', \
-    #                                 'DSS-pytorch_saliency', 'MSRNet_saliency', 'NLDF_saliency', \
-    #                                 'PiCANet-Implementation_saliency', 'salgan_saliency'])
+    generate_images_dict("thing_panoptic")
+    generate_images_dict("stuff_panoptic")
+

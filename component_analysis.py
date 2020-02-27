@@ -7,14 +7,15 @@ import numpy as np
 import scipy
 from torch.autograd import Variable
 from torch import FloatTensor
-
+from matplotlib import pyplot as plt
 
 import config
 from config import Config
 from DatasetLib import OOIDataset,Dataset
 from ioi_selection.CIEDN import CIEDN
 from compute_metric import compare_mask, write_csv, draw_pictures
-from middle_process import extract_json_from_panoptic_semantic, map_instance_to_gt, generate_image_dict, split_dataset, filter_by_saliency, compute_instance_saliency, compute_instance_saliency_list
+from utils.utils import rgb2id
+from middle_process import generate_images_dict
 
 import argparse
 import yaml
@@ -24,6 +25,12 @@ ROOT_DIR = os.getcwd()
 
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
+
+category_dict={}
+class_dict=json.load(open("data/class_dict.json",'r'))
+for class_id in class_dict:
+    category=class_dict[class_id]
+    category_dict[str(category['category_id'])]=category
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -59,161 +66,155 @@ class CIN(nn.Module):
         return self.ciedn(instance_groups)
 
 
-def predict(config, panoptic_model, semantic_model, saliency_model):
+def predict(config, panoptic_train_model, saliency_train_model, panoptic_model, saliency_model):
     # log_file="logs/CIN_ooi_100_selection.pth"
     ciedn = CIN().cuda()
     state_dict = torch.load(config.WEIGHT_PATH)
     ciedn.load_state_dict(state_dict, strict=False)
 
-    images = json.load(open("data/middle/ioi_val_images_dict_"+panoptic_model+".json", 'r'))
+    images = json.load(open("results/ioi_"+panoptic_model+".json", 'r'))
     class_dict=json.load(open("data/class_dict.json", 'r'))
     prediction_list = []
     gt_list = []
     count=0
     for image_id in images:
         count+=1
+        print(image_id)
         print(str(count)+"/"+str(len(images)))
-        try:
-            image=images[image_id]
-            # image_id = image['image_id']
-            image_name = image['image_name']
-            image_width = image['width']
-            image_height = image['height']
-            scale = 1024 / max(image_height, image_width)
-            new_height = round(image_height * scale)
-            new_width = round(image_width * scale)
-            top_pad = (1024 - new_height) // 2
-            bottom_pad = 1024 - new_height - top_pad
-            left_pad = (1024 - new_width) // 2
-            right_pad = 1024 - new_width - left_pad
+        # try:
+        image=images[image_id]
+        # image_id = image['image_id']
+        image_name = image['image_name']
+        image_width = image['width']
+        image_height = image['height']
+        scale = 1024 / max(image_height, image_width)
+        new_height = round(image_height * scale)
+        new_width = round(image_width * scale)
+        top_pad = (1024 - new_height) // 2
+        bottom_pad = 1024 - new_height - top_pad
+        left_pad = (1024 - new_width) // 2
+        right_pad = 1024 - new_width - left_pad
 
-            segments_info = image['segments_info']
+        segments_info = image['segments_info']
+        labels = []
+        boxes = []
+        class_ids=[]
+        instance_list=[]
+        for instance_id in segments_info:
+            instance_list.append(instance_id)
+            segment_info=segments_info[instance_id]
+            category_id = segment_info['category_id']
+            class_id = category_dict[str(category_id)]['class_id']
+            class_ids.append(class_id)
+            islabel = segment_info['labeled']
+            box = [int(segment_info['bbox'][0]*scale+top_pad),int(segment_info['bbox'][1]*scale+left_pad),int(segment_info['bbox'][2]*scale+top_pad),int(segment_info['bbox'][3]*scale+left_pad)]
+            labels.append(islabel)
+            boxes.append(np.array(box))
+        if len(segments_info)==0:
+            continue
+        boxes=np.stack(boxes)
+        # real
+        semantic_img = skimage.io.imread("../"+panoptic_model.replace("panoptic","semantic")+"/" + image_name.replace("jpg", "png"))
+        semantic_img = scipy.misc.imresize(semantic_img, (new_height, new_width), interp='nearest')
+        if len(semantic_img.shape)==3:
+            semantic_img=semantic_img[:,:,0]
+        semantic_label = np.pad(semantic_img, [(top_pad, bottom_pad), (left_pad, right_pad)], mode='constant',constant_values=0)
 
-            labels = []
-            boxes = []
-            class_ids = []
-            for instance_id in segments_info:
-                segment_info=segments_info[instance_id]
-                category_id = segment_info['category_id']
-                class_id = 0
-                for idx in class_dict:
-                    if class_dict[idx]['category_id'] == category_id:
-                        class_id = class_dict[idx]['class_id']
-                islabel = segment_info['labeled']
-                box = [int(segment_info['bbox'][0]*scale+top_pad),int(segment_info['bbox'][1]*scale+left_pad),int(segment_info['bbox'][2]*scale+top_pad),int(segment_info['bbox'][3]*scale+left_pad)]
-                labels.append(islabel)
-                class_ids.append(class_id)
-                boxes.append(np.array(box))
-                class_ids.append(class_id)
-            boxes=np.stack(boxes)
+        saliency_map = skimage.io.imread("../"+saliency_model+"/" + image_name.replace("jpg", "png"))
+        saliency_map = scipy.misc.imresize(saliency_map, (new_height, new_width), interp='nearest')
+        if len(saliency_map.shape)==3:
+            saliency_map=saliency_map[:,:,0]
+        saliency_map = np.pad(saliency_map, [(top_pad, bottom_pad), (left_pad, right_pad)], mode='constant',constant_values=0)
 
-            # real
-            semantic_img = skimage.io.imread("../"+semantic_model+"/" + image_name.replace("jpg", "png"))
-            semantic_img = scipy.misc.imresize(semantic_img, (new_height, new_width), interp='nearest')
-            if len(semantic_img.shape)==3:
-                semantic_img=semantic_img[:,:,0]
-            semantic_label = np.pad(semantic_img, [(top_pad, bottom_pad), (left_pad, right_pad)], mode='constant',constant_values=0)
+        instance_groups = []
+        for i in range(boxes.shape[0]):
+            y1, x1, y2, x2 = boxes[i][:4]
 
-            saliency_map = skimage.io.imread("../"+saliency_model+"/" + image_name.replace("jpg", "png"))
-            saliency_map = scipy.misc.imresize(saliency_map, (new_height, new_width), interp='nearest')
-            if len(saliency_map.shape)==3:
-                saliency_map=saliency_map[:,:,0]
-            saliency_map = np.pad(saliency_map, [(top_pad, bottom_pad), (left_pad, right_pad)], mode='constant',constant_values=0)
+            instance_group = []
 
-            instance_groups = []
-            for i in range(boxes.shape[0]):
-                y1, x1, y2, x2 = boxes[i][:4]
+            instance_label = semantic_label[y1:y2, x1:x2]
+            instance_label = scipy.misc.imresize(instance_label, (56, 56), interp='nearest') / 134.0
+            instance_group.append(instance_label)
 
-                instance_group = []
+            # plt.figure()
+            # plt.imshow(instance_label)
+            # plt.show()
 
-                instance_label = semantic_label[y1:y2, x1:x2]
-                instance_label = scipy.misc.imresize(instance_label, (56, 56), interp='nearest') / 134.0
-                instance_group.append(instance_label)
+            instance_map = saliency_map[y1:y2, x1:x2]
+            instance_map = scipy.misc.imresize(instance_map, (56, 56), interp='bilinear') / 255.0
+            instance_group.append(instance_map)
 
-                instance_map = saliency_map[y1:y2, x1:x2]
-                instance_map = scipy.misc.imresize(instance_map, (56, 56), interp='bilinear') / 255.0
-                instance_group.append(instance_map)
-                instance_group = np.stack(instance_group)
-                instance_groups.append(instance_group)
+            # plt.figure()
+            # plt.imshow(instance_map)
+            # plt.show()
 
-            instance_groups = np.stack(instance_groups)
-            class_ids = np.array(class_ids, dtype=np.float32)
-            labels = np.array(labels, dtype=np.float32)
+            instance_group = np.stack(instance_group)
+            instance_groups.append(instance_group)
 
-            instance_groups = Variable(FloatTensor(instance_groups)).float().cuda().unsqueeze(0)
-            boxes = Variable(FloatTensor(boxes)).float().cuda().unsqueeze(0)
-            if config.GPU_COUNT:
-                class_ids = Variable(FloatTensor(class_ids)).float().cuda().unsqueeze(0)
-                predictions = ciedn(instance_groups).squeeze(1).data.cpu().numpy()
-            else:
-                class_ids = Variable(FloatTensor(class_ids)).float().unsqueeze(0)
-                predictions = ciedn(instance_groups).squeeze(1).data.numpy()
 
-            num = instance_groups.shape[1]
-            for i in range(0, num):
-                avg = np.sum(predictions[i * num:(i + 1) * num]) / num
-                prediction_list.append(avg)
-            gt_list.extend(labels)
-        except Exception as e:
-            print(str(count)+":", e)
+        instance_groups = np.stack(instance_groups)
+        labels = np.array(labels, dtype=np.float32)
+
+        instance_groups = Variable(FloatTensor(instance_groups)).float().cuda().unsqueeze(0)
+        boxes = Variable(FloatTensor(boxes)).float().cuda().unsqueeze(0)
+        if config.GPU_COUNT:
+            predictions = ciedn(instance_groups).squeeze(1).data.cpu().numpy()
+        else:
+            predictions = ciedn(instance_groups).squeeze(1).data.numpy()
+
+        num = instance_groups.shape[1]
+        for i in range(0, num):
+            avg = np.sum(predictions[i * num:(i + 1) * num]) / num
+            prediction_list.append(avg)
+        gt_list.extend(labels)
 
     prediction_list = np.array(prediction_list)
     gt_list = np.array(gt_list)
     np.save("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_gt.npy", gt_list)
     np.save("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_pred.npy", prediction_list)
 
-def compute_metric(panoptic_train_model, saliency_train_model):
-    result = {}
+def compute_metric(panoptic_train_model, saliency_train_model,compare_list,mode):
     a2 = 0.3
     result = {}
-    wait_compares = [saliency_train_model, 'a-PyTorch-Tutorial-to-Image-Captioning_saiency', 'DSS-pytorch_saliency',
-                     'MSRNet_saliency', 'NLDF_saliency', 'PiCANet-Implementation_saliency', 'salgan_saliency',
-                     'thing_panoptic', 'stuff_panoptic']
-    saliency_model_list = [saliency_train_model, 'a-PyTorch-Tutorial-to-Image-Captioning_saiency', 'DSS-pytorch_saliency',
-                            'MSRNet_saliency', 'NLDF_saliency', 'PiCANet-Implementation_saliency', 'salgan_saliency']
-    panoptic_model_list = [panoptic_train_model, 'thing_panoptic', 'stuff_panoptic']
-    for wait_compare in wait_compares:
-        panoptic_model = panoptic_train_model
-        saliency_model = saliency_train_model
-        if wait_compare in saliency_model_list:
-            saliency_model = wait_compare
-        elif wait_compare in panoptic_model_list:
-            panoptic_model = wait_compare
-        gt = np.load("results/ciedn_result/" + panoptic_model + "_" + saliency_model + "_gt.npy")
-        pred = np.load("results/ciedn_result/" + panoptic_model + "_" + saliency_model + "_pred.npy")
-        base = 0
-        if wait_compare in panoptic_model_list:
-            gt_to_pred = json.load(open("data/middle/ioi_instance_gt_pred_"+panoptic_model+".json"))
-            print("data/middle/ioi_instance_gt_pred_"+panoptic_model+".json")
-            for image_id in gt_to_pred:
-                instance = gt_to_pred[image_id]
-                for instance_id in instance:
-                    if instance[instance_id]['labeled']== True and len(instance[instance_id]['pred']) == 0 :
-                        base += 1
-        else:
-            gt_to_pred = json.load(open("data/middle/ioi_instance_gt_pred_"+panoptic_train_model+".json"))
-            for image_id in gt_to_pred:
-                instance = gt_to_pred[image_id]
-                for instance_id in instance:
-                    if instance[instance_id]['labeled']== True and len(instance[instance_id]['pred']) == 0 :
-                        base += 1
-        print(wait_compare, "base", base)
-        precision,recall,f, _recall, _f=compare_mask(gt,pred,a2, base)
-        # result[str(round(a2,2))][wait_compare]={"precision":precision,"recall":recall,"f":f, "_recall":_recall, "_f": _f}
-        result[wait_compare] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall,"_f": _f}
-    # json.dump(result,open("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_result.json",'w'))
-    json.dump(result,open("results/ciedn_result/result_"+panoptic_train_model+"_"+saliency_train_model+".json",'w'))
-    write_csv(wait_compares,"results/ciedn_result/result_"+panoptic_train_model+"_"+saliency_train_model)
-    # write_csv(['CIN_panoptic_all'], "results/ciedn_result/pred_gt_result")
-    draw_pictures(wait_compares,result)
-
-def middle_process(panoptic_model, semantic_model, saliency_model):
-    extract_json_from_panoptic_semantic(panoptic_model,semantic_model)
-    map_instance_to_gt(panoptic_model)
-    generate_image_dict(panoptic_model)
-    # filter_by_saliency(panoptic_model, saliency_model)
+    base=0
+    image_dict=json.load(open("results/ioi_"+panoptic_train_model+".json",'r'))
+    for image_id in image_dict:
+        base+=image_dict[image_id]['base']
+    print(base)
+    gt = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_gt.npy")
+    pred = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_pred.npy")
+    precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, base)
+    result[saliency_train_model] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
+    print("compare")
+    if mode == "instance":
+        for wait_compare in compare_list:
+            compare_base = 0
+            compare_image_dict = json.load(open("results/ioi_" + wait_compare + ".json", 'r'))
+            for image_id in image_dict:
+                compare_base += compare_image_dict[image_id]['base']
+            print(compare_base)
+            gt = np.load("results/ciedn_result/" + wait_compare + "_" + saliency_train_model + "_gt.npy")
+            pred = np.load("results/ciedn_result/" + wait_compare + "_" + saliency_train_model + "_pred.npy")
+            precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, compare_base)
+            result[wait_compare] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
+        json.dump(result,open("results/ciedn_result/result_" + panoptic_train_model + "_" + saliency_train_model + ".json",'w'))
+        write_csv([saliency_train_model]+compare_list, "results/ciedn_result/result_" + panoptic_train_model + "_" + saliency_train_model)
+        draw_pictures([saliency_train_model]+compare_list, result)
+    elif mode=="p_interest":
+        for wait_compare in compare_list:
+            gt = np.load("results/ciedn_result/" + panoptic_train_model + "_" + wait_compare + "_gt.npy")
+            pred = np.load("results/ciedn_result/" + panoptic_train_model + "_" + wait_compare + "_pred.npy")
+            precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, base)
+            result[wait_compare] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
+        json.dump(result,open("results/ciedn_result/result_" + panoptic_train_model + "_" + saliency_train_model + ".json", 'w'))
+        write_csv([saliency_train_model]+compare_list, "results/ciedn_result/result_" + panoptic_train_model + "_" + saliency_train_model)
+        draw_pictures([saliency_train_model]+compare_list, result)
 
 if __name__ == '__main__':
+    panoptic_train_model = 'CIN_panoptic_val'
+    semantic_train_model = 'CIN_semantic_val'
+    saliency_train_model = 'CIN_saliency_val'
+
     panoptic_model = ''
     semantic_model = ''
     saliency_model = ''
@@ -233,17 +234,26 @@ if __name__ == '__main__':
     else:
         config = CINConfig()
 
-    panoptic_model = 'CIN_panoptic_all'
-    saliency_model = 'CIN_saliency_all'
-    semantic_model = 'CIN_semantic_all'
-
-
-    # saliency_model_list=[saliency_model,'a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency']
-    # panoptic_model_list = ['stuff_panoptic', 'thing_panoptic']
-    # for saliency_model in saliency_model_list:
-    #     predict(config, panoptic_model, semantic_model, saliency_model)
+    # if panoptic_model!=panoptic_train_model:
+    #     predict(config, panoptic_train_model, saliency_train_model, panoptic_model, saliency_train_model)
+    #     compare_list=[panoptic_model]
+    #     compute_metric(panoptic_train_model, saliency_train_model, compare_list,mode="instance")
     #
-    # for panoptic_model in panoptic_model_list:
-    #     predict(config, panoptic_model, semantic_model, saliency_model)
+    # if saliency_model!=saliency_train_model:
+    #     predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_model)
+    #     compare_list = [saliency_model]
+    #     compute_metric(panoptic_train_model, saliency_train_model, compare_list,mode="p_interest")
+    #
+    # if panoptic_model==panoptic_train_model and saliency_model==saliency_train_model:
+    predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_train_model)
 
-    compute_metric(panoptic_model, saliency_model)
+        # panoptic_model_list = ['thing_panoptic', 'stuff_panoptic']
+        # for panoptic_model_inner in panoptic_model_list:
+        #     # generate_images_dict(panoptic_model_inner)
+        #     predict(config, panoptic_train_model, saliency_train_model, panoptic_model_inner, saliency_train_model)
+        # compute_metric(panoptic_train_model, saliency_train_model,panoptic_model_list,mode="instance")
+        #
+        # saliency_model_list=['a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency']
+        # for saliency_model_inner in saliency_model_list:
+        #     predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_model_inner)
+        # compute_metric(panoptic_train_model, saliency_train_model, saliency_model_list, mode="p_interest")
