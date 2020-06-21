@@ -16,7 +16,8 @@ from ioi_selection.CIEDN import CIEDN
 from compute_metric import compare_mask
 from utils.utils import rgb2id
 from middle_process import generate_images_dict
-
+import ioi_selection_binary
+import ioi_selection_rnn
 import argparse
 import yaml
 
@@ -36,16 +37,20 @@ def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ins_ext", type=str,
                         default='CIN_panoptic_val',
-                        help="the path of the image to be detected")
+                        help="the path of the panoptic images")
     parser.add_argument("--sem_ext", type=str,
                         default='CIN_semantic_val',
-                        help="the path of the image to be detected")
+                        help="the path of the semantic images")
     parser.add_argument("--p_intr_ext", type=str,
                         default='CIN_saliency_val',
-                        help="the path of the image to be detected")
+                        help="the path of the interest images")
+    parser.add_argument("--selection_model", type=str,
+                        default='CIN_selection_val',
+                        help="selection model")
     parser.add_argument("--config", type=str,
                         default="configs/component_analysis_config.yaml",
                         help="the config file path")
+
     return parser
 
 
@@ -173,7 +178,7 @@ def predict(config, panoptic_train_model, saliency_train_model, panoptic_model, 
     np.save("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_gt.npy", gt_list)
     np.save("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_pred.npy", prediction_list)
 
-def compute_metric(panoptic_train_model, saliency_train_model,compare_list,result,mode):
+def compute_metric(panoptic_train_model, saliency_train_model, selection_model, compare_list,result,mode):
     a2 = 0.3
     threshold=0.4
 
@@ -184,8 +189,8 @@ def compute_metric(panoptic_train_model, saliency_train_model,compare_list,resul
             for image_id in image_dict:
                 base += image_dict[image_id]['base']
 
-            gt = np.load("results/ciedn_result/" + wait_compare + "_" + saliency_train_model + "_gt.npy")
-            pred = np.load("results/ciedn_result/" + wait_compare + "_" + saliency_train_model + "_pred.npy")
+            gt = np.load("results/ciedn_result/" + wait_compare + "_" + saliency_train_model + "_" + selection_train_model + "_gt.npy")
+            pred = np.load("results/ciedn_result/" + wait_compare + "_" + saliency_train_model + "_" + selection_train_model + "_pred.npy")
 
             precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, base,threshold)
             result[wait_compare] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
@@ -196,19 +201,32 @@ def compute_metric(panoptic_train_model, saliency_train_model,compare_list,resul
             base+=image_dict[image_id]['base']
 
         for wait_compare in compare_list:
-            gt = np.load("results/ciedn_result/" + panoptic_train_model + "_" + wait_compare + "_gt.npy")
-            pred = np.load("results/ciedn_result/" + panoptic_train_model + "_" + wait_compare + "_pred.npy")
+            gt = np.load("results/ciedn_result/" + panoptic_train_model + "_" + wait_compare + "_" + selection_train_model + "_gt.npy")
+            pred = np.load("results/ciedn_result/" + panoptic_train_model + "_" + wait_compare + "_" + selection_train_model + "_pred.npy")
             
             precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, base,threshold)
             result[wait_compare] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
+    elif mode=="selection":
+        base = 0
+        image_dict = json.load(open("results/ioi_" + panoptic_train_model + + "_" + selection_train_model ".json", 'r'))
+        for image_id in image_dict:
+            base += image_dict[image_id]['base']
+
+        for wait_compare in compare_list:
+            gt = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_" + wait_compare + "_gt.npy")
+            pred = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_" + wait_compare + "_pred.npy")
+
+            precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, base, threshold)
+            result[wait_compare + "_" + saliency_train_model] = {"precision": precision, "recall": recall, "f": f,
+                                                                     "_recall": _recall, "_f": _f}
     else:
         base=0
         image_dict=json.load(open("results/ioi_"+panoptic_train_model+".json",'r'))
         for image_id in image_dict:
             base+=image_dict[image_id]['base']
 
-        gt = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_gt.npy")
-        pred = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_pred.npy")
+        gt = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_" + selection_train_model + "_gt.npy")
+        pred = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_" + selection_train_model + "_pred.npy")
         
         precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, base,threshold)
         result[panoptic_train_model+"_"+saliency_train_model] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
@@ -219,6 +237,7 @@ if __name__ == '__main__':
     panoptic_train_model = 'CIN_panoptic_val'
     semantic_train_model = 'CIN_semantic_val'
     saliency_train_model = 'CIN_saliency_val'
+    selection_train_model = 'CIN_selection_val'
 
     panoptic_model = ''
     semantic_model = ''
@@ -244,16 +263,24 @@ if __name__ == '__main__':
         generate_images_dict(panoptic_model)
         predict(config, panoptic_train_model, saliency_train_model, panoptic_model, saliency_train_model)
         compare_list=[panoptic_model]
-        result=compute_metric(panoptic_model, saliency_train_model, compare_list, result, mode="instance")
+        result=compute_metric(panoptic_model, saliency_train_model, selection_train_model, compare_list, result, mode="instance")
     
     if saliency_model!=saliency_train_model:
         predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_model)
         compare_list = [saliency_model]
-        result=compute_metric(panoptic_train_model, saliency_train_model, compare_list, result, mode="p_interest")
-    
-    if panoptic_model==panoptic_train_model and saliency_model==saliency_train_model:
+        result=compute_metric(panoptic_train_model, saliency_train_model, selection_train_model, compare_list, result, mode="p_interest")
+
+    if selection_model!=selection_train_model:
+        compare_list=[selection_model]
+        if selection_model=="binary":
+            ioi_selection_binary.predict(panoptic_train_model, saliency_train_model)
+        elif selection_model=="rnn":
+            ioi_selection_rnn.predict(panoptic_train_model, saliency_train_model, 116)
+        result = compute_metric(panoptic_train_model, saliency_train_model, selection_train_model, compare_list, result, mode="selection")
+
+    if panoptic_model==panoptic_train_model and saliency_model==saliency_train_model and selection_model==selection_train_model:
         predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_train_model)
-        result=compute_metric(panoptic_train_model, saliency_train_model, panoptic_model_list, result, mode="p_interest")
+        result=compute_metric(panoptic_train_model, saliency_train_model, selection_train_model, [], result, mode="ours")
 
     print(result)
     # predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_train_model)

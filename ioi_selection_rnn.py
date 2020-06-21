@@ -42,7 +42,7 @@ class LSTM_V(nn.Module):
 
 
 def load_labeled_data(mode,panoptic_model,saliency_model,max_len):
-    images_json=json.load(open("data/ioi_"+mode+"_images_dict_with_diff_saliency_"+panoptic_model+".json",'r'))
+    images_json=json.load(open("results/"+mode+"_images_dict_with_saliency.json",'r'))
     image_id_list=list()
     for image_id in images_json:
         image_id_list.append((image_id,len(images_json[image_id]['segments_info'])))
@@ -53,7 +53,7 @@ def load_labeled_data(mode,panoptic_model,saliency_model,max_len):
     length_list=list()
     for image_id,instance_num in image_id_list:
         image=images_json[image_id]
-        instances=image['segments_info']
+        instances=image['instances']
         if instance_num>=max_len:
             print(instance_num)
             continue
@@ -130,22 +130,22 @@ def train_by_batch(panoptic_model,saliency_model,max_len):
         print("loss:"+str(loss.data.cpu().numpy()))
             # exit()
         if epoch%10==0:
-            torch.save(rnn, 'logs/lstm/'+str(epoch)+'.pkl')
+            torch.save(rnn, 'logs/lstm_'+str(epoch)+'.pkl')
 
 def predict(panoptic_model,saliency_model,max_len):
-    rnn = torch.load('logs/lstm/50.pkl')
+    rnn = torch.load('lstm_50.pkl')
     input_data, gt_data, length_list = load_labeled_data("val",panoptic_model,saliency_model,max_len)
     input_tensor = Variable(torch.from_numpy(input_data), requires_grad=True).cuda()
     input_tensor = torch.nn.utils.rnn.pack_padded_sequence(input_tensor, length_list, batch_first=True)
     gt_tensor = Variable(torch.from_numpy(gt_data)).cuda()
     gt_tensor = torch.nn.utils.rnn.pack_padded_sequence(gt_tensor, length_list, batch_first=True)[0].data.cpu().numpy()
     prediction=rnn(input_tensor,2000,max_len).data.cpu().numpy()
-    np.save("results/lstm/"+panoptic_model+"/"+saliency_moel+"gt.npy",gt_tensor)
-    np.save("results/lstm/"+panoptic_model+"/"+saliency_moel+"pred.npy",prediction)
+    np.save("results/ciedn_result/"+panoptic_model+"/"+saliency_moel+"_rnn_gt.npy",gt_tensor)
+    np.save("results/ciedn_result/"+panoptic_model+"/"+saliency_moel+"_rnn_pred.npy",prediction)
 
 import sys
 if __name__=='__main__':
     if sys.argv[1]=="train":
-        train_by_batch("CIN_panoptic_all","CIN_saliency_all",116)
+        train_by_batch("CIN_panoptic_train","CIN_saliency_train",116)
     elif sys.argv[1]=="pred":
-        predict("CIN_panoptic_all", "CIN_saliency_all",116)
+        predict("CIN_panoptic_val", "CIN_saliency_val",116)

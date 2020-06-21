@@ -9,6 +9,13 @@ from matplotlib import pyplot as plt
 import multiprocessing
 from PIL import Image
 
+def get_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", type=str,
+                        default="val",
+                        help="val or train")
+    return parser
+
 def generate_images_dict(panoptic_model):
     class_id_dict=json.load(open("data/class_dict.json",'r'))
     val_dict=json.load(open("data/val_images_dict.json",'r'))
@@ -113,28 +120,29 @@ def map_instance_to_gt(val_images,save_name):
 
     json.dump(ioi_val_images_dict, open("results/ioi_"+save_name+".json", 'w'))
 
-def compute_instance_saliency(segmentation_model,saliency_model):
-    try:
-        images_dict=json.load(open("data/middle/ioi_train_images_dict_"+segmentation_model+"_"+saliency_model+".json",'r'))
-        results_len=len(images_dict)
-        results_file = [images_dict[img_id]['image_name'].replace(".jpg",".png") for img_id in images_dict]
-        cpu_cnt = multiprocessing.cpu_count()
-        step = max(int(results_len / cpu_cnt), 1)
-        pool = multiprocessing.Pool()
-        procs = []
-        for begin in range(0, results_len, step):
-            end = begin + step
-            if end > results_len:
-                end = results_len
-            procs.append(pool.apply_async(run_proc, (begin, end,results_file,images_dict,segmentation_model,saliency_model)))
+def compute_instance_saliency(mode,segmentation_model,saliency_model):
+    # try:
+    #     images_dict=json.load(open("data/"+mode+"_images_dict.json",'r'))
+    #     results_len=len(images_dict)
+    #     results_file = [images_dict[img_id]['image_name'].replace(".jpg",".png") for img_id in images_dict]
+    #     cpu_cnt = multiprocessing.cpu_count()
+    #     step = max(int(results_len / cpu_cnt), 1)
+    #     pool = multiprocessing.Pool()
+    #     procs = []
+    #     for begin in range(0, results_len, step):
+    #         end = begin + step
+    #         if end > results_len:
+    #             end = results_len
+    #         procs.append(pool.apply_async(run_proc, (begin, end,results_file,images_dict,segmentation_model,saliency_model)))
 
-        instance_saliency = {}
-        for proc in procs:
-            instance_saliency = {**proc.get(), **instance_saliency}
-        json.dump(instance_saliency, open('data/middle/ioi_train_images_dict_with_diff_saliency_'+segmentation_model+"_"+saliency_model+'.json', 'w'))
-    except Exception as e:
-        print(e)
-    images_dict = json.load(open("data/middle/ioi_val_images_dict_" + segmentation_model + "_" + saliency_model + ".json", 'r'))
+    #     instance_saliency = {}
+    #     for proc in procs:
+    #         instance_saliency = {**proc.get(), **instance_saliency}
+    #     json.dump(instance_saliency, open('results/'+mode+'_images_dict_saliency.json', 'w'))
+    # except Exception as e:
+    #     print(e)
+        
+    images_dict = json.load(open("data/"+mode+"_images_dict.json", 'r'))
     results_len = len(images_dict)
     results_file = [images_dict[img_id]['image_name'].replace(".jpg", ".png") for img_id in images_dict]
     cpu_cnt = multiprocessing.cpu_count()
@@ -150,31 +158,7 @@ def compute_instance_saliency(segmentation_model,saliency_model):
     instance_saliency = {}
     for proc in procs:
         instance_saliency = {**proc.get(), **instance_saliency}
-    json.dump(instance_saliency, open('data/middle/ioi_val_images_dict_with_diff_saliency_' + segmentation_model+"_"+saliency_model + '.json', 'w'))
-
-def compute_instance_saliency_list(segmentation_model,saliency_train_model,saliency_model_list):
-    images_dict = json.load(open("data/middle/ioi_val_images_dict_" + segmentation_model + "_"+saliency_train_model+".json", 'r'))
-    for saliency_model in saliency_model_list:
-        print(saliency_model)
-        results_len = len(images_dict)
-        results_file = [images_dict[img_id]['image_name'].replace(".jpg", ".png") for img_id in images_dict]
-        cpu_cnt = multiprocessing.cpu_count()
-        step = max(int(results_len / cpu_cnt), 1)
-        pool = multiprocessing.Pool()
-        procs = []
-        for begin in range(0, results_len, step):
-            end = begin + step
-            if end > results_len:
-                end = results_len
-            procs.append(pool.apply_async(run_proc, (begin, end, results_file, images_dict, segmentation_model,saliency_model)))
-
-        instance_saliency = {}
-        for proc in procs:
-            instance_saliency = {**proc.get(), **instance_saliency}
-        images_dict=instance_saliency
-    print('data/middle/ioi_val_images_dict_with_diff_saliency_' + segmentation_model + '.json')
-    print(len(images_dict))
-    json.dump(images_dict,open('data/middle/ioi_val_images_dict_with_diff_saliency_' + segmentation_model + '.json','w'))
+    json.dump(instance_saliency, open('results/'+mode+'_images_dict_with_saliency.json', 'w'))
 
 def run_proc(begin, end, results_file, images_dict, segmentation_model,saliency_model):
     print('Computing [%d, %d)...' % (begin, end))
@@ -205,20 +189,20 @@ def run_proc(begin, end, results_file, images_dict, segmentation_model,saliency_
         saliency_mask = np.array(result_img, dtype=np.uint8)
         seg_mask = utils.rgb2id(np.array(seg_img, dtype=np.uint8))
 
-        instances = images_dict[img_id]["segments_info"]
+        instances = images_dict[img_id]["instances"]
         for instance_id in instances:
             instance = instances[instance_id]
             instance_mask=seg_mask == int(instance_id)
             saliencys=sorted(saliency_mask[instance_mask],reverse=True)
             if saliency_mask[instance_mask].shape[0]==0:
                 instance[saliency_model+'_max'] = 0
-                instance[saliency_model+'_mean'] = 0
-                instance[saliency_model+'_q3'] = 0
+                # instance[saliency_model+'_mean'] = 0
+                # instance[saliency_model+'_q3'] = 0
             else:
                 instance_mask = (instance_mask).astype(np.uint8)
                 instance[saliency_model+'_max'] = int(saliencys[0])#int(np.amax(instance_mask * saliency_mask))
-                instance[saliency_model+'_mean'] = int(np.sum(saliencys)/np.count_nonzero(instance_mask))#int(np.sum(instance_mask * saliency_mask) / np.count_nonzero(instance_mask))
-                instance[saliency_model+'_q3'] = int(saliencys[len(saliencys) // 4])
+                # instance[saliency_model+'_mean'] = int(np.sum(saliencys)/np.count_nonzero(instance_mask))#int(np.sum(instance_mask * saliency_mask) / np.count_nonzero(instance_mask))
+                # instance[saliency_model+'_q3'] = int(saliencys[len(saliencys) // 4])
         instance_saliency[img_id] = images_dict[img_id]
 
     print('Complete [%d, %d)...' % (begin, end))
@@ -227,6 +211,17 @@ def run_proc(begin, end, results_file, images_dict, segmentation_model,saliency_
 import sys
 
 if __name__=='__main__':
-    generate_images_dict("thing_panoptic")
-    generate_images_dict("stuff_panoptic")
+    # generate_images_dict("thing_panoptic")
+    # generate_images_dict("stuff_panoptic")
+    args = get_parser().parse_args()
+    if args.mode:
+        mode = args.mode
+    if args.config:
+        with open(args.config, 'r') as config:
+            config_dict = yaml.load(config)
+            config = CINConfig()
+            for key in config_dict:
+                config.key = config_dict[key]
+
+    compute_instance_saliency(mode,"CIN_panoptic_"+mode,"CIN_saliency_"+mode)
 

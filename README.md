@@ -24,6 +24,9 @@ mkdir ../data
 mkdir ../CIN_semantic_val
 mkdir ../CIN_panoptic_val
 mkdir ../CIN_saliency_val
+mkdir ../CIN_semantic_train
+mkdir ../CIN_panoptic_train
+mkdir ../CIN_saliency_train
 mkdir results/CIEDN_pred
 mkdir results/ciedn_result
 mkdir results/validate
@@ -53,7 +56,7 @@ python train.py −−setting <setting> −−config <configuration file path>
 ```
 Based on the pretrained model, you can predict all the images in the dataset by running the following script:
 ```python
-python predict.py −−mode <mode> −−config <configuration file path>
+python predict.py −−mode <mode> --train_val_mode <train_val_mode> −−config <configuration file path>
 ```
 To validate the performance of the CIN model, the validate.py file can be performed in the following script:
 ```python
@@ -61,8 +64,22 @@ python validate.py −−config < configuration file path>
 ```
 In order to verify the effectiveness of the method, the component_analysis.py file can be performed in the following script:
 ```python
-python component_analysis.py −−ins_ext <panoptic segmentation path> −−sem_ext <semantic segmentation path> −−p_intr <interest estimation path> −−config <configuration file path>
+python component_analysis.py −−ins_ext <panoptic segmentation path> −−sem_ext <semantic segmentation path> −−p_intr <interest estimation path> --selection_model <selection model> −−config <configuration file path>
 ```
+We provide two interest selection variants in "ioi_selection_binary.py" and "ioi_selection_rnn.py". Before using these two variants, you have to generate medium results:
+```python
+python predict.py --mode insttr --train_val_mode val −−config <configuration file path>
+python middle_process.py --mode val
+```  
+If you want to train the model in "ioi_selection_rnn.py" by yourself, you need to generate medium results for training set:
+```python
+python predict.py --mode insttr --train_val_mode train −−config <configuration file path>
+python middle_process.py --mode train
+python ioi_selection_rnn.py train
+```
+
 You can download some pretrained models at https://drive.google.com/open?id=167nT9zWvmWN2YQ_SKoMO7faqHE2LMcX2 and https://drive.google.com/open?id=1COzdQtxtA0v4bkb6MOuUX7QpbWJPsibm. After downloading the pretrained model, you should put the files at the "models" folder which is the child folder of the root.
 
 This project refers to https://github.com/Ugness/PiCANet-Implementation and https://github.com/multimodallearning/pytorch-mask-rcnn
+Our baselines refers to https://github.com/RuochenFan/S4Net and https://github.com/multimodallearning/pytorch-mask-rcnn.
+Our components analysis refers to https://github.com/dmechea/PanopticSegmentation, https://github.com/AceCoooool/DSS-pytorch.git, https://github.com/zhimingluo/NLDF, https://github.com/Xyuan13/MSRNet, https://github.com/Ugness/PiCANet-Implementation, https://github.com/batsa003/salgan and https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning.      
