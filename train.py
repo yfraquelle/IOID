@@ -13,7 +13,6 @@ import argparse
 import yaml
 
 ROOT_DIR = os.getcwd()
-IMAGENET_MODEL_PATH = os.path.join(ROOT_DIR, "models/resnet50_imagenet.pth")
 
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
@@ -63,15 +62,14 @@ if __name__=='__main__':
     settings = [('semantic', 0.01, 34), ('p_interest', 0.01, 44), ('selection', 0.001, 100)]
     args = get_parser().parse_args()
     if args.setting:
-        settings_str = args.setting[1:-1]
-        settings_list=settings_str.split("),(")
-        settings_list[0]=settings_list[0][1:]
-        settings_list[-1] = settings_list[-1][:-1]
-        for i in range(len(settings_list)):
-            settings_list[i]=settings_list[i].split(",")
-            settings_list[i][1]=float(settings_list[i][1])
-            settings_list[i][2] = int(settings_list[i][2])
-        settings=settings_list
+        new_settings=[]
+        settings_list = args.setting.split(',')
+        for i in range(len(settings_list)//3):
+            new_settings.append([])
+            new_settings[i].append(settings_list[3*i+0])
+            new_settings[i].append(float(settings_list[3*i+1]))
+            new_settings[i].append(int(settings_list[3*i+2]))
+        settings=new_settings
     if args.config:
         with open(args.config, 'r') as config:
             config_dict = yaml.load(config)

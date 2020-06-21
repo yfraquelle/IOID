@@ -244,16 +244,16 @@ if __name__ == '__main__':
         generate_images_dict(panoptic_model)
         predict(config, panoptic_train_model, saliency_train_model, panoptic_model, saliency_train_model)
         compare_list=[panoptic_model]
-        result=compute_metric(panoptic_model, saliency_train_model, compare_list,mode="instance")
+        result=compute_metric(panoptic_model, saliency_train_model, compare_list, result, mode="instance")
     
     if saliency_model!=saliency_train_model:
         predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_model)
         compare_list = [saliency_model]
-        result=compute_metric(panoptic_train_model, saliency_train_model, compare_list,mode="p_interest")
+        result=compute_metric(panoptic_train_model, saliency_train_model, compare_list, result, mode="p_interest")
     
     if panoptic_model==panoptic_train_model and saliency_model==saliency_train_model:
         predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_train_model)
-        result=compute_metric(panoptic_train_model, saliency_train_model, panoptic_model_list, mode="p_interest")
+        result=compute_metric(panoptic_train_model, saliency_train_model, panoptic_model_list, result, mode="p_interest")
 
     print(result)
     # predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_train_model)

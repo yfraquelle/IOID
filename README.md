@@ -1,4 +1,4 @@
-/er Instance of Interest Detection
+## Instance of Interest Detection
 
 ## Requirements
 opencv_python==3.4.3.18  
@@ -30,7 +30,7 @@ mkdir results/validate
 ```
 
 ## Dataset
-We construct the first dataset for IOID based on the training set of MSCOCO 2017, which contains 123,287 images with manually labelled captions and panoptic segmentation. We construct our dataset by representing each IOI with its category and its region in the panoptic segmentation. There are 133 categories of IOIs in total, the same as those provided by the panoptic segmentation in MSCOCO 2017, containing 80 thing categories, such as person, ball and cow, and 53 stuff categories, such as wall, tree and mountain. We further divide the datasets into the training set and the test set, which contain 36,000 images with 165,094 IOIs and 9,000 images with 40,617 IOIs, respectively.  
+We construct the first dataset for IOID based on the training set of MSCOCO 2017, which contains 123,287 images with manually labelled captions and panoptic segmentation. We construct our dataset by representing each IOI with its category and its region in the panoptic segmentation. There are 133 categories of IOIs in total, the same as those provided by the panoptic segmentation in MSCOCO 2017, containing 80 thing categories, such as person, ball and cow, and 53 stuff categories, such as wall, tree and mountain. We further divide the datasets into the training set and the test set, which contain 36,000 images and 9,000 images, respectively.  
 The dataset consists of the following sections:
 1. The original images which can be downloaded at https://drive.google.com/open?id=1yRyduTD58_lL1GI4oGoUdhpi3gnjzvgO. After downloading the dataset, you should put the image folder at the "data" folder which is paralell with the root.
 2. The panoptic segmentation images which can be downloaded at https://drive.google.com/open?id=1nxvSLhNkk7Vc2HEEXquG51tESwEHK07T. After downloading the dataset, you should put the image folder at the "data" folder which is paralell with the root.
@@ -46,10 +46,10 @@ To visualize the result of the instance of interest detection, we provide a demo
 python demo.py −−img <image path> −−config <configuration file path>
 ```
 You can train you own model by running the following script:
-TIPS:setting list sample: ['('semantic,0.01,30')','('p_interest,0.01,10')','('selection,0.01,100')']
+TIPS:setting sample: semantic,0.01,34,p_interest,0.01,44,selection,0.01,100
 brackets must be surrounded by quoted, and there must not exist space.
 ```python
-python train.py −−setting <setting list> −−config <configuration file path>
+python train.py −−setting <setting> −−config <configuration file path>
 ```
 Based on the pretrained model, you can predict all the images in the dataset by running the following script:
 ```python
