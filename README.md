@@ -11,8 +11,8 @@ matplotlib==3.0.0
 Pillow==7.0.0  
 skimage==0.0  
 tensorboardX==2.0  
-PyYAML==3.13
-cffi==1.12.2
+PyYAML==3.13  
+cffi==1.12.2  
 
 ## Folder Creation
 ```
