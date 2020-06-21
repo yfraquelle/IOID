@@ -60,7 +60,7 @@ def run(settings, config):
     #                   layers='selection')
 
 if __name__=='__main__':
-    settings = [('semantic', 0.01, 34), ('p_interest', 0.01, 44), ('selection', 0.001, 144)]
+    settings = [('semantic', 0.01, 34), ('p_interest', 0.01, 44), ('selection', 0.001, 100)]
     args = get_parser().parse_args()
     if args.setting:
         settings_str = args.setting[1:-1]

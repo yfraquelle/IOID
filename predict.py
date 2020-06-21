@@ -217,5 +217,4 @@ if __name__=='__main__':
             config = CINConfig()
             for key in config_dict:
                 config.key = config_dict[key]
-
     run(mode, config)

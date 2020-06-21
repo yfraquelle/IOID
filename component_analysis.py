@@ -13,7 +13,7 @@ import config
 from config import Config
 from DatasetLib import OOIDataset,Dataset
 from ioi_selection.CIEDN import CIEDN
-from compute_metric import compare_mask, write_csv, draw_pictures
+from compute_metric import compare_mask
 from utils.utils import rgb2id
 from middle_process import generate_images_dict
 
@@ -35,13 +35,13 @@ for class_id in class_dict:
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ins_ext", type=str,
-                        default='CIN_panoptic_all',
+                        default='CIN_panoptic_val',
                         help="the path of the image to be detected")
     parser.add_argument("--sem_ext", type=str,
-                        default='CIN_semantic_all',
+                        default='CIN_semantic_val',
                         help="the path of the image to be detected")
     parser.add_argument("--p_intr_ext", type=str,
-                        default='CIN_saliency_all',
+                        default='CIN_saliency_val',
                         help="the path of the image to be detected")
     parser.add_argument("--config", type=str,
                         default="configs/component_analysis_config.yaml",
@@ -173,42 +173,47 @@ def predict(config, panoptic_train_model, saliency_train_model, panoptic_model, 
     np.save("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_gt.npy", gt_list)
     np.save("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_pred.npy", prediction_list)
 
-def compute_metric(panoptic_train_model, saliency_train_model,compare_list,mode):
+def compute_metric(panoptic_train_model, saliency_train_model,compare_list,result,mode):
     a2 = 0.3
-    result = {}
-    base=0
-    image_dict=json.load(open("results/ioi_"+panoptic_train_model+".json",'r'))
-    for image_id in image_dict:
-        base+=image_dict[image_id]['base']
-    print(base)
-    gt = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_gt.npy")
-    pred = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_pred.npy")
-    precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, base)
-    result[saliency_train_model] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
-    print("compare")
+    threshold=0.4
+
     if mode == "instance":
         for wait_compare in compare_list:
-            compare_base = 0
-            compare_image_dict = json.load(open("results/ioi_" + wait_compare + ".json", 'r'))
+            base = 0
+            image_dict = json.load(open("results/ioi_" + wait_compare + ".json", 'r'))
             for image_id in image_dict:
-                compare_base += compare_image_dict[image_id]['base']
-            print(compare_base)
+                base += image_dict[image_id]['base']
+
             gt = np.load("results/ciedn_result/" + wait_compare + "_" + saliency_train_model + "_gt.npy")
             pred = np.load("results/ciedn_result/" + wait_compare + "_" + saliency_train_model + "_pred.npy")
-            precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, compare_base)
+
+            precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, base,threshold)
             result[wait_compare] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
-        json.dump(result,open("results/ciedn_result/result_" + panoptic_train_model + "_" + saliency_train_model + ".json",'w'))
-        write_csv([saliency_train_model]+compare_list, "results/ciedn_result/result_" + panoptic_train_model + "_" + saliency_train_model)
-        draw_pictures([saliency_train_model]+compare_list, result)
     elif mode=="p_interest":
+        base=0
+        image_dict=json.load(open("results/ioi_"+panoptic_train_model+".json",'r'))
+        for image_id in image_dict:
+            base+=image_dict[image_id]['base']
+
         for wait_compare in compare_list:
             gt = np.load("results/ciedn_result/" + panoptic_train_model + "_" + wait_compare + "_gt.npy")
             pred = np.load("results/ciedn_result/" + panoptic_train_model + "_" + wait_compare + "_pred.npy")
-            precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, base)
+            
+            precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, base,threshold)
             result[wait_compare] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
-        json.dump(result,open("results/ciedn_result/result_" + panoptic_train_model + "_" + saliency_train_model + ".json", 'w'))
-        write_csv([saliency_train_model]+compare_list, "results/ciedn_result/result_" + panoptic_train_model + "_" + saliency_train_model)
-        draw_pictures([saliency_train_model]+compare_list, result)
+    else:
+        base=0
+        image_dict=json.load(open("results/ioi_"+panoptic_train_model+".json",'r'))
+        for image_id in image_dict:
+            base+=image_dict[image_id]['base']
+
+        gt = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_gt.npy")
+        pred = np.load("results/ciedn_result/" + panoptic_train_model + "_" + saliency_train_model + "_pred.npy")
+        
+        precision, recall, f, _recall, _f = compare_mask(gt, pred, a2, base,threshold)
+        result[panoptic_train_model+"_"+saliency_train_model] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
+
+    return result
 
 if __name__ == '__main__':
     panoptic_train_model = 'CIN_panoptic_val'
@@ -234,26 +239,37 @@ if __name__ == '__main__':
     else:
         config = CINConfig()
 
-    # if panoptic_model!=panoptic_train_model:
-    #     predict(config, panoptic_train_model, saliency_train_model, panoptic_model, saliency_train_model)
-    #     compare_list=[panoptic_model]
-    #     compute_metric(panoptic_train_model, saliency_train_model, compare_list,mode="instance")
-    #
-    # if saliency_model!=saliency_train_model:
-    #     predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_model)
-    #     compare_list = [saliency_model]
-    #     compute_metric(panoptic_train_model, saliency_train_model, compare_list,mode="p_interest")
-    #
-    # if panoptic_model==panoptic_train_model and saliency_model==saliency_train_model:
-    predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_train_model)
+    result={}
+    if panoptic_model!=panoptic_train_model:
+        generate_images_dict(panoptic_model)
+        predict(config, panoptic_train_model, saliency_train_model, panoptic_model, saliency_train_model)
+        compare_list=[panoptic_model]
+        result=compute_metric(panoptic_model, saliency_train_model, compare_list,mode="instance")
+    
+    if saliency_model!=saliency_train_model:
+        predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_model)
+        compare_list = [saliency_model]
+        result=compute_metric(panoptic_train_model, saliency_train_model, compare_list,mode="p_interest")
+    
+    if panoptic_model==panoptic_train_model and saliency_model==saliency_train_model:
+        predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_train_model)
+        result=compute_metric(panoptic_train_model, saliency_train_model, panoptic_model_list, mode="p_interest")
 
-        # panoptic_model_list = ['thing_panoptic', 'stuff_panoptic']
-        # for panoptic_model_inner in panoptic_model_list:
-        #     # generate_images_dict(panoptic_model_inner)
-        #     predict(config, panoptic_train_model, saliency_train_model, panoptic_model_inner, saliency_train_model)
-        # compute_metric(panoptic_train_model, saliency_train_model,panoptic_model_list,mode="instance")
-        #
-        # saliency_model_list=['a-PyTorch-Tutorial-to-Image-Captioning_saiency','DSS-pytorch_saliency','MSRNet_saliency','NLDF_saliency','PiCANet-Implementation_saliency','salgan_saliency']
-        # for saliency_model_inner in saliency_model_list:
-        #     predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_model_inner)
-        # compute_metric(panoptic_train_model, saliency_train_model, saliency_model_list, mode="p_interest")
+    print(result)
+    # predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_train_model)
+    # result=compute_metric(panoptic_train_model, saliency_train_model, [], result, mode="")
+
+    # panoptic_model_list = ['thing_panoptic', 'stuff_panoptic']
+    # for panoptic_model_inner in panoptic_model_list:
+    #     # generate_images_dict(panoptic_model_inner)
+    #     # predict(config, panoptic_train_model, saliency_train_model, panoptic_model_inner, saliency_train_model)
+    #     result=compute_metric(panoptic_model_inner, saliency_train_model,[panoptic_model_inner],result,mode="instance")
+
+    # saliency_model_list=['SAT','DSS','MSRNet','NLDF','PiCANet','SalGAN']
+    # # for saliency_model_inner in saliency_model_list:
+    # #     predict(config, panoptic_train_model, saliency_train_model, panoptic_train_model, saliency_model_inner)
+    # result=compute_metric(panoptic_train_model, saliency_train_model, saliency_model_list, result, mode="p_interest")
+    # json.dump(result,open("results/ciedn_result/result_" + panoptic_train_model + "_" + saliency_train_model + ".json",'w'))
+    # for key in result:
+    #     print(key)
+    #     print(result[key])

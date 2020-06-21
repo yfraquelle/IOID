@@ -1,1 +1,2 @@
 NAME : ooi
+WEIGHT_PATH : models/mask_rcnn_coco.pth
