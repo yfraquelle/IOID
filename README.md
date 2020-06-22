@@ -8,8 +8,7 @@ torchvision==0.2.1
 torch==0.4.1  
 scipy==1.1.0  
 matplotlib==3.0.0  
-Pillow==7.0.0  
-skimage==0.0  
+Pillow==7.0.0    
 tensorboardX==2.0  
 PyYAML==3.13  
 cffi==1.12.2  
@@ -78,8 +77,18 @@ python middle_process.py --mode train
 python ioi_selection_rnn.py train
 ```
 
+##Docker environment
+We provide docker image with all software dependencies: https://drive.google.com/file/d/1IQneKJpYU34tyREmuDC9G81nI1ekIiCX/view?usp=sharing .
+```
+sudo docker pull xxxx
+sudo nvidia-docker run --rm -ti -v /path/to/parent/floder/of/IOID:/workspace --ipc=host xxxx /bin/bash
+```
+
+
+##Links
+
 You can download some pretrained models at https://drive.google.com/open?id=167nT9zWvmWN2YQ_SKoMO7faqHE2LMcX2 and https://drive.google.com/open?id=1COzdQtxtA0v4bkb6MOuUX7QpbWJPsibm. After downloading the pretrained model, you should put the files at the "models" folder which is the child folder of the root.
 
-This project refers to https://github.com/Ugness/PiCANet-Implementation and https://github.com/multimodallearning/pytorch-mask-rcnn
-Our baselines refers to https://github.com/RuochenFan/S4Net and https://github.com/multimodallearning/pytorch-mask-rcnn.
-Our components analysis refers to https://github.com/dmechea/PanopticSegmentation, https://github.com/AceCoooool/DSS-pytorch.git, https://github.com/zhimingluo/NLDF, https://github.com/Xyuan13/MSRNet, https://github.com/Ugness/PiCANet-Implementation, https://github.com/batsa003/salgan and https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning.      
+This project refers to https://github.com/Ugness/PiCANet-Implementation and https://github.com/multimodallearning/pytorch-mask-rcnn .  
+Our baselines refers to https://github.com/RuochenFan/S4Net and https://github.com/multimodallearning/pytorch-mask-rcnn .  
+Our components analysis refers to https://github.com/dmechea/PanopticSegmentation, https://github.com/AceCoooool/DSS-pytorch.git, https://github.com/zhimingluo/NLDF, https://github.com/Xyuan13/MSRNet, https://github.com/Ugness/PiCANet-Implementation, https://github.com/batsa003/salgan and https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning .
