@@ -47,9 +47,8 @@ To visualize the result of the instance of interest detection, we provide a demo
 ```python
 python demo.py −−img <image path> −−config <configuration file path>
 ```
-You can train you own model by running the following script:
-TIPS:setting sample: semantic,0.01,34,p_interest,0.01,44,selection,0.01,100
-brackets must be surrounded by quoted, and there must not exist space.
+You can train you own model by running the following script:  
+TIPS:setting sample: semantic,0.01,34,p_interest,0.01,44,selection,0.01,100  
 ```python
 python train.py −−setting <setting> −−config <configuration file path>
 ```
