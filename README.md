@@ -77,7 +77,7 @@ python middle_process.py --mode train
 python ioi_selection_rnn.py train
 ```
 
-##Docker environment
+## Docker environment
 We provide docker image with all software dependencies: https://drive.google.com/file/d/1IQneKJpYU34tyREmuDC9G81nI1ekIiCX/view?usp=sharing .
 ```
 sudo docker pull xxxx
@@ -85,8 +85,7 @@ sudo nvidia-docker run --rm -ti -v /path/to/parent/floder/of/IOID:/workspace --i
 ```
 
 
-##Links
-
+## Links
 You can download some pretrained models at https://drive.google.com/open?id=167nT9zWvmWN2YQ_SKoMO7faqHE2LMcX2 and https://drive.google.com/open?id=1COzdQtxtA0v4bkb6MOuUX7QpbWJPsibm. After downloading the pretrained model, you should put the files at the "models" folder which is the child folder of the root.
 
 This project refers to https://github.com/Ugness/PiCANet-Implementation and https://github.com/multimodallearning/pytorch-mask-rcnn .  
