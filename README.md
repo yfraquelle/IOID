@@ -77,10 +77,10 @@ python ioi_selection_rnn.py train
 ```
 
 ## Docker environment
-We provide docker image with all software dependencies: https://drive.google.com/file/d/1IQneKJpYU34tyREmuDC9G81nI1ekIiCX/view?usp=sharing .
+We provide docker image with all software dependencies: https://drive.google.com/file/d/1IQneKJpYU34tyREmuDC9G81nI1ekIiCX/view?usp=sharing .  
 ```
-sudo docker pull xxxx
-sudo nvidia-docker run --rm -ti -v /path/to/parent/floder/of/IOID:/workspace --ipc=host xxxx /bin/bash
+sudo docker load -i yfraquelle_ioid_env_v1.tar
+sudo nvidia-docker run --rm -ti -v /path/to/parent/floder/of/IOID:/workspace --ipc=host <image_id> /bin/bash
 ```
 
 
