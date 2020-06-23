@@ -68,8 +68,7 @@ if config.GPU_COUNT:
     model = model.cuda()
 
 # Load weights
-state_dict_dir = os.path.join(MODEL_DIR, "CIN_ooi_all.pth")
-state_dict = torch.load(state_dict_dir)
+state_dict = torch.load(config.WEIGHT_PATH)
 model.load_state_dict(state_dict, strict=False)
 
 

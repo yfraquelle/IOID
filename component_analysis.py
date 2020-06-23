@@ -44,7 +44,7 @@ def get_parser():
     parser.add_argument("--p_intr_ext", type=str,
                         default='CIN_saliency_val',
                         help="the path of the interest images")
-    parser.add_argument("--selection_model", type=str,
+    parser.add_argument("--sel_ext", type=str,
                         default='CIN_selection_val',
                         help="selection model")
     parser.add_argument("--config", type=str,
@@ -208,7 +208,7 @@ def compute_metric(panoptic_train_model, saliency_train_model, selection_model, 
             result[wait_compare] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
     elif mode=="selection":
         base = 0
-        image_dict = json.load(open("results/ioi_" + panoptic_train_model + + "_" + selection_train_model ".json", 'r'))
+        image_dict = json.load(open("results/ioi_" + panoptic_train_model + ".json", 'r'))
         for image_id in image_dict:
             base += image_dict[image_id]['base']
 
@@ -249,6 +249,8 @@ if __name__ == '__main__':
         semantic_model = args.sem_ext
     if args.p_intr_ext:
         saliency_model = args.p_intr_ext
+    if args.sel_ext:
+        selection_model = args.sel_ext
     if args.config:
         with open(args.config, 'r') as config:
             config_dict = yaml.load(config)
