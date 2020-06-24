@@ -43,9 +43,13 @@ class LSTM_V(nn.Module):
 
 def load_labeled_data(mode,panoptic_model,saliency_model,max_len):
     images_json=json.load(open("results/"+mode+"_images_dict_with_saliency.json",'r'))
+    class_dict=json.load(open("data/class_dict.json",'r'))
+    category_dict={}
+    for class_id in class_dict:
+        category_dict[class_dict[class_id]['category_id']]=class_id
     image_id_list=list()
     for image_id in images_json:
-        image_id_list.append((image_id,len(images_json[image_id]['segments_info'])))
+        image_id_list.append((image_id,len(images_json[image_id]['instances'])))
     image_id_list=sorted(image_id_list,key=lambda x:x[1],reverse=True)
 
     input_data=[] #(image_num,instance_num,2)
@@ -62,7 +66,7 @@ def load_labeled_data(mode,panoptic_model,saliency_model,max_len):
 
         for instance_id,saliency in instances_sortlist:
             instance=instances[instance_id]
-            category_id=instance['class_id']
+            category_id=category_dict[instance['category_id']]
             saliency = instance[saliency_model+'_max']
             if instance['labeled']==True:
                 labeled = 1
@@ -140,8 +144,8 @@ def predict(panoptic_model,saliency_model,max_len):
     gt_tensor = Variable(torch.from_numpy(gt_data)).cuda()
     gt_tensor = torch.nn.utils.rnn.pack_padded_sequence(gt_tensor, length_list, batch_first=True)[0].data.cpu().numpy()
     prediction=rnn(input_tensor,2000,max_len).data.cpu().numpy()
-    np.save("results/ciedn_result/"+panoptic_model+"/"+saliency_moel+"_rnn_gt.npy",gt_tensor)
-    np.save("results/ciedn_result/"+panoptic_model+"/"+saliency_moel+"_rnn_pred.npy",prediction)
+    np.save("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_rnn_gt.npy",gt_tensor)
+    np.save("results/ciedn_result/"+panoptic_model+"_"+saliency_model+"_rnn_pred.npy",prediction)
 
 import sys
 if __name__=='__main__':

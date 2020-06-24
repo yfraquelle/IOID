@@ -22,7 +22,7 @@ import matplotlib.lines as lines
 from matplotlib.patches import Polygon
 
 from utils import utils
-
+import scipy
 
 ############################################################
 #  Visualization
@@ -145,6 +145,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
             verts = np.fliplr(verts) - 1
             p = Polygon(verts, facecolor="none", edgecolor=color)
             ax.add_patch(p)
+    scipy.misc.imsave("demo_images/demo.png",masked_image.astype(np.uint8))
     ax.imshow(masked_image.astype(np.uint8))
     plt.show()
 

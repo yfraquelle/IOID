@@ -152,7 +152,7 @@ def run(config):
 
         pl=maxminnorm(np.array(prediction_list))
         gl=np.array(gt_list)
-        pl=np.where(pl > 0.4, 1, 0)
+        pl=np.where(pl > 0.45, 1, 0)
 
         # a2=0.3
         # TP = np.sum(np.multiply(pl, gl))
@@ -165,13 +165,12 @@ def run(config):
         # f_ = (a2 + 1) * precision * recall_ / (a2 * precision + recall_)
         # print("base: "+str(base)+"  precision: "+str(precision)+"  recall: " + str(recall_)+"  f: " + str(f_)+"  recall*: " + str(recall)+"  f*: " + str(f))
 
-    predition_list = np.array(prediction_list)
+    prediction_list = np.array(prediction_list)
     gt_list = np.array(gt_list)
     np.save("results/validate/gt.npy", gt_list)
     np.save("results/validate/pred.npy", prediction_list)
-    
-    precision, recall, f, _recall, _f = compare_mask(gt_list, predition_list, 0.3, base,0.4)
-    result[panoptic_train_model+"_"+saliency_train_model] = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
+    precision, recall, f, _recall, _f = compare_mask(gt_list, prediction_list, 0.3, base,0.4)
+    result = {"precision": precision, "recall": recall, "f": f, "_recall": _recall, "_f": _f}
     print(result)
 
 if __name__=='__main__':

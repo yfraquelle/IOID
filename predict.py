@@ -51,11 +51,11 @@ def run(mode, config,train_val_mode="val"):
         model = model.cuda()
 
     if mode=="insttr":
-        if os.path.exists("../CIN_panoptic_"+train_val_mode):
+        if not os.path.exists("../CIN_panoptic_"+train_val_mode):
             os.makedirs("../CIN_panoptic_"+train_val_mode)
-        if os.path.exists("../CIN_semantic_"+train_val_mode):
+        if not os.path.exists("../CIN_semantic_"+train_val_mode):
             os.makedirs("../CIN_semantic_"+train_val_mode)
-        if os.path.exists("../CIN_saliency_"+train_val_mode):
+        if not os.path.exists("../CIN_saliency_"+train_val_mode):
             os.makedirs("../CIN_saliency_"+train_val_mode)
 
         model.load_weights(config.WEIGHT_PATH)
@@ -114,9 +114,9 @@ def run(mode, config,train_val_mode="val"):
                 print(e)
         map_instance_to_gt(images_dict,"CIN_panoptic_"+train_val_mode)
     elif mode=="instance":
-        if os.path.exists("../CIN_panoptic_"+train_val_mode):
+        if not os.path.exists("../CIN_panoptic_"+train_val_mode):
             os.makedirs("../CIN_panoptic_"+train_val_mode)
-        if os.path.exists("../CIN_semantic_"+train_val_mode):
+        if not os.path.exists("../CIN_semantic_"+train_val_mode):
             os.makedirs("../CIN_semantic_"+train_val_mode)
         model.load_weights(config.WEIGHT_PATH)
         images_dict=json.load(open(os.path.join(config.JSON_PATH, train_val_mode+"_images_dict.json"),'r'))
@@ -168,7 +168,7 @@ def run(mode, config,train_val_mode="val"):
                 print(e)
         map_instance_to_gt(images_dict,"CIN_panoptic_"+train_val_mode)
     elif mode=="p_interest":
-        if os.path.exists("../CIN_saliency_"+train_val_mode):
+        if not os.path.exists("../CIN_saliency_"+train_val_mode):
             os.makedirs("../CIN_saliency_"+train_val_mode)
         print("generate p_interest")
         model.load_weights(config.WEIGHT_PATH)
@@ -219,17 +219,19 @@ def run(mode, config,train_val_mode="val"):
         json.dump(CIEDN_pred_dict, open("results/CIEDN_pred_dict.json", 'w'))
 
     else:
-        print("mode not exists")
+        print(mode+" does not exist")
 
 import sys
 if __name__=='__main__':
     args = get_parser().parse_args()
     if args.mode:
         mode = args.mode
+    if args.train_val_mode:
+        train_val_mode = args.train_val_mode
     if args.config:
         with open(args.config, 'r') as config:
             config_dict = yaml.load(config)
             config = CINConfig()
             for key in config_dict:
                 config.key = config_dict[key]
-    run(mode, config, "train")
+    run(mode, config, train_val_mode)

@@ -149,7 +149,7 @@ class Config(object):
     USE_RPN_ROIS = True
 
     # The threshold when selecting IOIs
-    SELECTION_THRESHOLD = 0.4
+    SELECTION_THRESHOLD = 0.45 # according to STUFF_THRESHOLD
 
     IMAGE_PATH = "../data/"
 
@@ -163,7 +163,7 @@ class Config(object):
 
     INSTANCE_SIZE = 56
 
-    STUFF_THRESHOLD = 1000
+    STUFF_THRESHOLD = 500 # cannot remember the original setting
 
     THING_NUM_CLASSES = 1+80
 

@@ -104,7 +104,7 @@ if len(image.shape) == 2:
     image = np.stack([image, image, image], axis=2)
 # Run detection
 results = model.detect([image], limit='selection')
-segments_info = results
+segments_info = results[0]
 boxes = []
 masks = []
 class_ids = []

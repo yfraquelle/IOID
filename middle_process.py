@@ -8,10 +8,11 @@ from collections import defaultdict
 from matplotlib import pyplot as plt
 import multiprocessing
 from PIL import Image
+import argparse
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str,
+    parser.add_argument("--mode", type=str,
                         default="val",
                         help="val or train")
     return parser
@@ -216,12 +217,6 @@ if __name__=='__main__':
     args = get_parser().parse_args()
     if args.mode:
         mode = args.mode
-    if args.config:
-        with open(args.config, 'r') as config:
-            config_dict = yaml.load(config)
-            config = CINConfig()
-            for key in config_dict:
-                config.key = config_dict[key]
 
     compute_instance_saliency(mode,"CIN_panoptic_"+mode,"CIN_saliency_"+mode)
 
