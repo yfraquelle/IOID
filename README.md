@@ -43,7 +43,7 @@ In order to verify the effectiveness of the method, we compare the results of ou
 
 
 ## Quick Start
-To visualize the result of the instance of interest detection, we provide a demo and it can be performed in the following script:
+To visualize the result of the instance of interest detection, we provide a demo and it can be performed with the following script:
 ```python
 python demo.py −−img <image path> −−config <configuration file path>
 ```
@@ -54,7 +54,7 @@ python train.py −−setting <setting> −−config <configuration file path>
 ```
 Based on the pretrained model, you can predict all the images in the dataset by running the following script:
 ```python
-python predict.py −−mode <mode> --train_val_mode <train_val_mode> −−config <configuration file path>
+python predict.py −−mode <mode> --subset <performing on which dataset> −−config <configuration file path>
 ```
 To validate the performance of the CIN model, the validate.py file can be performed in the following script:
 ```python
@@ -62,16 +62,16 @@ python validate.py −−config < configuration file path>
 ```
 In order to verify the effectiveness of the method, the component_analysis.py file can be performed in the following script:
 ```python
-python component_analysis.py −−ins_ext <panoptic segmentation path> −−sem_ext <semantic segmentation path> −−p_intr <interest estimation path> --selection_model <selection model> −−config <configuration file path>
+python component_analysis.py −−ins_ext <panoptic segmentation path> −−sem_ext <semantic segmentation path> −−p_intr <interest estimation path> --sel_ext <IOI selection method> −−config <configuration file path>
 ```
 We provide two interest selection variants in "ioi_selection_binary.py" and "ioi_selection_rnn.py". Before using these two variants, you have to generate medium results:
 ```python
-python predict.py --mode insttr --train_val_mode val −−config <configuration file path>
+python predict.py --mode insttr --subset val −−config <configuration file path>
 python middle_process.py --mode val
 ```  
 If you want to train the model in "ioi_selection_rnn.py" by yourself, you need to generate medium results for training set:
 ```python
-python predict.py --mode insttr --train_val_mode train −−config <configuration file path>
+python predict.py --mode insttr --subset train −−config <configuration file path>
 python middle_process.py --mode train
 python ioi_selection_rnn.py train
 ```

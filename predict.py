@@ -226,12 +226,12 @@ if __name__=='__main__':
     args = get_parser().parse_args()
     if args.mode:
         mode = args.mode
-    if args.train_val_mode:
-        train_val_mode = args.train_val_mode
+    if args.subset:
+        subset = args.subset
     if args.config:
         with open(args.config, 'r') as config:
             config_dict = yaml.load(config)
             config = CINConfig()
             for key in config_dict:
-                config.key = config_dict[key]
-    run(mode, config, train_val_mode)
+                setattr(config,key,config_dict[key])
+    run(mode, config, subset)

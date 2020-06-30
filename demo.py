@@ -60,7 +60,7 @@ if args.config:
         config_dict = yaml.load(config)
         config = CINConfig()
         for key in config_dict:
-            config.key = config_dict[key]
+            setattr(config,key,config_dict[key])
 
 # Create model object.
 model = CIN(model_dir=MODEL_DIR, config=config)
