@@ -90,3 +90,20 @@ You can download some pretrained models at https://drive.google.com/open?id=167n
 This project refers to https://github.com/Ugness/PiCANet-Implementation and https://github.com/multimodallearning/pytorch-mask-rcnn .  
 Our baselines refers to https://github.com/RuochenFan/S4Net and https://github.com/multimodallearning/pytorch-mask-rcnn .  
 Our components analysis refers to https://github.com/dmechea/PanopticSegmentation, https://github.com/AceCoooool/DSS-pytorch.git, https://github.com/zhimingluo/NLDF, https://github.com/Xyuan13/MSRNet, https://github.com/Ugness/PiCANet-Implementation, https://github.com/batsa003/salgan and https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning .
+
+## Citation
+
+    @inproceedings{yu2019instance,
+        title={Instance of Interest Detection},
+        author={Yu, Fan and Wang, Haonan and Ren, Tongwei and Tang, Jinhui and Wu, Gangshan},
+        booktitle={Proceedings of the 27th ACM International Conference on Multimedia},
+        pages={1997--2005},
+        year={2019}
+    }
+
+    @inproceedings{yu2020reproducibility,
+        title={Reproducibility Companion Paper: Instance of Interest Detection},
+        author={Yu, Fan and Wang, Dandan and Wang, Haonan and Ren, Tongwei and Tang, Jinhui and Wu, Gangshan and Chen, Jingjing and Riegler, Michael},
+        booktitle={Conference on Multimedia (MM’20)},
+        year={2020}
+    }
