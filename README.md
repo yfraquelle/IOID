@@ -104,6 +104,6 @@ Our components analysis refers to https://github.com/dmechea/PanopticSegmentatio
     @inproceedings{yu2020reproducibility,
         title={Reproducibility Companion Paper: Instance of Interest Detection},
         author={Yu, Fan and Wang, Dandan and Wang, Haonan and Ren, Tongwei and Tang, Jinhui and Wu, Gangshan and Chen, Jingjing and Riegler, Michael},
-        booktitle={Conference on Multimedia (MM’20)},
+        booktitle={Proceedings of the 28th ACM International Conference on Multimedia},
         year={2020}
     }
